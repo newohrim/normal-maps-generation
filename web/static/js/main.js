@@ -136,6 +136,9 @@ function upload_texture()
 input.click();
 }
 
+var normalScaleInputSlider;
+var normalScaleLabel;
+
 function test() 
 {
 	var input = new Float32Array(512 * 512 * 3);
@@ -160,6 +163,57 @@ function test()
 		console.log(scores);
 		var temp = createCanvasFromRGBAData(scores, 512, 512);
 		document.body.append(temp);
+
+		// COLOR TEXTURE
+		dummyDataTex = new THREE.DataTexture( input_texture, 512, 512, 
+			THREE.RGBAFormat, 
+			THREE.UnsignedByteType, 
+			THREE.UVMapping, 
+			THREE.ClampToEdgeWrapping, 
+			THREE.ClampToEdgeWrapping, 
+			THREE.LinearFilter, 
+			THREE.LinearMipmapLinearFilter 
+		);
+		//dummyTex = new THREE.Texture(dummyDataTex);
+		dummyDataTex.generateMipmaps = true;
+		material.map = dummyDataTex;
+		dummyDataTex.needsUpdate = true;
+		
+		// NORMAL TEXTURE
+		temp = flattenArray(scores[0].map(RGBtoArr)).map( x => x * 255 );
+		var tempUInt = new Uint8Array(temp.length);
+		for (var i = 0; i < temp.length; ++i) 
+		{
+			tempUInt[i] = Math.floor(temp[i]);
+		}
+		dummyDataNorm = new THREE.DataTexture( tempUInt, 512, 512, 
+			THREE.RGBAFormat, 
+			THREE.UnsignedByteType, 
+			THREE.UVMapping, 
+			THREE.ClampToEdgeWrapping, 
+			THREE.ClampToEdgeWrapping, 
+			THREE.LinearFilter, 
+			THREE.LinearMipmapLinearFilter 
+		);
+		material.normalMap = dummyDataNorm;
+		dummyDataNorm.needsUpdate = true;
+
+		material.needsUpdate = true;
+
+		normalScaleInputSlider = document.createElement("input");
+		normalScaleInputSlider.type = "range";
+		normalScaleInputSlider.min = 0;
+		normalScaleInputSlider.max = 10;
+		normalScaleInputSlider.value = 1;
+		normalScaleInputSlider.step = 0.01;
+		normalScaleInputSlider.oninput = normalScaleSliderValueChanged;
+		document.body.appendChild(normalScaleInputSlider);
+		normalScaleLabel = document.createElement("p");
+		normalScaleLabel.innerHTML = normalScaleInputSlider.value;
+		document.body.appendChild(normalScaleLabel)
+
+		document.body.appendChild( renderer.domElement );
+
 		//scores = scores[0];
 		//predicted = scores.indexOf(Math.max(...scores));
 		//$('#number').html(predicted);
@@ -189,4 +243,40 @@ function test()
 			*/
 	  });
 	});	
+}
+
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+camera.position.z = 1;
+const scene = new THREE.Scene();
+
+const geometry = new THREE.BoxGeometry( 0.75, 0.75, 0.75 );
+const material = new THREE.MeshPhongMaterial();
+
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+// LIGHTS
+const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( light );
+const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+scene.add( directionalLight );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setAnimationLoop( animation );
+
+function animation( time ) {
+
+	mesh.rotation.x = time / 2000;
+	mesh.rotation.y = time / 1000;
+
+	renderer.render( scene, camera );
+
+}
+
+function normalScaleSliderValueChanged(event) 
+{
+	normalScaleLabel.innerHTML = normalScaleInputSlider.value;
+	material.normalScale = new THREE.Vector2(normalScaleInputSlider.value, normalScaleInputSlider.value);
+	material.needsUpdate = true;
 }
