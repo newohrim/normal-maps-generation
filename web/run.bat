@@ -1,1 +1,1 @@
-python -m http.server 8000
+flask --app app.py run

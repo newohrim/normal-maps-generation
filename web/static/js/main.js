@@ -1,6 +1,18 @@
-//const Tiff = require("tiff.js");
-
 var input_texture;
+
+function sobelFilter() 
+{
+	var canvas = document.getElementById("normalCanvas");
+	var context = canvas.getContext('2d');
+
+	var width = 512;
+	var height = 512;
+
+	var imageData = context.getImageData(0, 0, width, height);
+	var sobelData = Sobel(imageData);
+	var sobelImageData = sobelData.toImageData();
+  	context.putImageData(sobelImageData, 0, 0);
+}
 
 function base64ToArrayBuffer(base64) {
     var binary_string = window.atob(base64);
@@ -162,7 +174,9 @@ function test()
 		window.model.predict([temp]).array().then(function(scores){
 		console.log(scores);
 		var temp = createCanvasFromRGBAData(scores, 512, 512);
+		temp.setAttribute("id", "normalCanvas");
 		document.body.append(temp);
+		//sobelFilter();
 
 		// COLOR TEXTURE
 		dummyDataTex = new THREE.DataTexture( input_texture, 512, 512, 

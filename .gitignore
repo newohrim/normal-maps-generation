@@ -3,3 +3,5 @@ __pycache__/
 *.pth
 exp/
 content/
+docs/
+report/
