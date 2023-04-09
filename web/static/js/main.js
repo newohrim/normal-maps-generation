@@ -1,17 +1,54 @@
 var input_texture;
 
-function sobelFilter() 
+function lerp (start, end, amt)
 {
-	var canvas = document.getElementById("normalCanvas");
+	return (1-amt)*start+amt*end;
+}
+
+function normalStrength(normal, strength)
+{
+	normal.x *= strength;
+	normal.y *= strength;
+	normal.z = lerp(1, normal.z, strength);
+
+	return normal;
+}
+
+function sobelFilter(normalStrengthValue) 
+{
+	//var canvas = document.getElementById("normalCanvas");
+	var canvas = normalCanvas;
 	var context = canvas.getContext('2d');
 
 	var width = 512;
 	var height = 512;
 
-	var imageData = context.getImageData(0, 0, width, height);
+	var targetImageData = context.getImageData(0, 0, width, height);
+	var imageData = normalImageData;
 	var sobelData = Sobel(imageData);
-	var sobelImageData = sobelData.toImageData();
-  	context.putImageData(sobelImageData, 0, 0);
+	//var sobelImageData = sobelData.toImageData();
+
+	for (var i = 0; i < height; ++i) 
+	{
+		for (var j = 0; j < width; ++j) 
+		{
+			const index = i * width * 4 + j * 4;
+			const sobel_factor = sobelData[index] / 255;
+			var normal = { 
+				x: imageData.data[index + 0],  
+				y: imageData.data[index + 1],  
+				z: imageData.data[index + 2]
+			};
+			normal = normalStrength(normal, sobel_factor * normalStrengthValue + 1);
+			//for (var k = 0; k < 3; ++k)
+				//imageData.data[index + k] = imageData.data[index + k] * (sobel_factor + 1);
+			targetImageData.data[index + 0] = normal.x;
+			targetImageData.data[index + 1] = normal.y;
+			targetImageData.data[index + 2] = normal.z;
+		}
+	}
+
+  	context.putImageData(targetImageData, 0, 0);
 }
 
 function base64ToArrayBuffer(base64) {
@@ -150,6 +187,8 @@ input.click();
 
 var normalScaleInputSlider;
 var normalScaleLabel;
+var normalCanvas;
+var normalImageData;
 
 function test() 
 {
@@ -174,9 +213,11 @@ function test()
 		window.model.predict([temp]).array().then(function(scores){
 		console.log(scores);
 		var temp = createCanvasFromRGBAData(scores, 512, 512);
+		normalCanvas = temp;
+		normalImageData = new ImageData(temp.getContext('2d').getImageData(0, 0, 512, 512).data, 512, 512);
 		temp.setAttribute("id", "normalCanvas");
 		document.body.append(temp);
-		//sobelFilter();
+		sobelFilter(1);
 
 		// COLOR TEXTURE
 		dummyDataTex = new THREE.DataTexture( input_texture, 512, 512, 
@@ -194,11 +235,11 @@ function test()
 		dummyDataTex.needsUpdate = true;
 		
 		// NORMAL TEXTURE
-		temp = flattenArray(scores[0].map(RGBtoArr)).map( x => x * 255 );
+		temp = flattenArray(scores[0].map(RGBtoArr)).map( x => Math.floor(x * 255));
 		var tempUInt = new Uint8Array(temp.length);
 		for (var i = 0; i < temp.length; ++i) 
 		{
-			tempUInt[i] = Math.floor(temp[i]);
+			tempUInt[i] = temp[i];
 		}
 		dummyDataNorm = new THREE.DataTexture( tempUInt, 512, 512, 
 			THREE.RGBAFormat, 
@@ -224,7 +265,7 @@ function test()
 		document.body.appendChild(normalScaleInputSlider);
 		normalScaleLabel = document.createElement("p");
 		normalScaleLabel.innerHTML = normalScaleInputSlider.value;
-		document.body.appendChild(normalScaleLabel)
+		document.body.appendChild(normalScaleLabel);
 
 		document.body.appendChild( renderer.domElement );
 
@@ -292,5 +333,26 @@ function normalScaleSliderValueChanged(event)
 {
 	normalScaleLabel.innerHTML = normalScaleInputSlider.value;
 	material.normalScale = new THREE.Vector2(normalScaleInputSlider.value, normalScaleInputSlider.value);
+	material.needsUpdate = true;
+}
+
+function refresh()
+{
+	var sobelFactorSlider = document.getElementById("sobelFactorSlider");
+	sobelFilter(sobelFactorSlider.value);
+
+	//var tempUInt = new Uint8Array(temp.length);
+	dummyDataNorm = new THREE.DataTexture( normalCanvas.getContext('2d').getImageData(0, 0, 512, 512).data, 512, 512, 
+		THREE.RGBAFormat, 
+		THREE.UnsignedByteType, 
+		THREE.UVMapping, 
+		THREE.ClampToEdgeWrapping, 
+		THREE.ClampToEdgeWrapping, 
+		THREE.LinearFilter, 
+		THREE.LinearMipmapLinearFilter 
+	);
+	material.normalMap = dummyDataNorm;
+	dummyDataNorm.needsUpdate = true;
+
 	material.needsUpdate = true;
 }
