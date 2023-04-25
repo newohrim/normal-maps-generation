@@ -1,4 +1,25 @@
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 var input_texture;
+
+window.upload_texture= upload_texture;
+window.upload_mesh2= upload_mesh2;
+window.test= test;
+window.refresh= refresh;
+
+function loadModel(path)
+{
+	path = "C:Users\\ohrim\\Documents\\Unreal Projects\\HW_Platformer\\FBXContent\\props\\isl_Coin_01_DEF.obj";
+	const loader = new OBJLoader();
+	loader.load(path, function(loadedMesh) {
+		return loadedMesh;
+		//scene.add(loadedMesh.scene);
+	}, undefined, function(error) {
+		console.error(error);
+	});
+}
 
 function lerp (start, end, amt)
 {
@@ -109,6 +130,50 @@ function createCanvasFromRGBAData(data, width, height) {
 	return canvas;
   }
 
+function upload_mesh(onload)
+{
+	var input = document.createElement('input');
+    input.type = 'file';
+
+    input.onchange = e => { 
+
+    // getting a hold of the file reference
+    var file = e.target.files[0];
+
+    // setting up the reader
+    var reader = new FileReader();
+
+    // here we tell the reader what to do when it's done reading...
+    reader.onload = onload;
+
+    reader.readAsArrayBuffer(file);
+	}
+
+	input.click();
+}
+
+function upload_mesh2() {
+	upload_mesh(function(readerEvent) {
+		var content = readerEvent.target.result; // this is the content!
+
+		var contentStr = new TextDecoder("utf-8").decode(content);
+		var objLoader = new OBJLoader();
+		//objLoader.setMaterials({material});
+		mesh = objLoader.parse(contentStr);
+		mesh.traverse( function( child ) {
+            if ( child instanceof THREE.Mesh ) {
+                child.material = material;
+            }
+        } );
+        //objLoader.load( 'isl_Coin_01_DEF.obj', function ( object ) {    
+            //mesh = object;
+            //mesh.material = material;
+			//mesh = new THREE.Mesh(new THREE.BoxGeometry( 0.75, 0.75, 0.75 ), material);
+            scene.add( mesh );
+        });
+	//});
+}
+
 function upload_texture()
 {
     var input = document.createElement('input');
@@ -185,6 +250,8 @@ function upload_texture()
 input.click();
 }
 
+var rotateMeshCheckbox;
+var cameraDistanceSlider;
 var normalScaleInputSlider;
 var normalScaleLabel;
 var normalCanvas;
@@ -207,12 +274,32 @@ function test()
     console.log("test");
     tf.loadLayersModel('static/model/model.json').then(function(model) {
 		window.model = model;
-		var tensor = tf.tensor(input);
+		var tensor = tf.tensor(input).reshape([1, 512, 512, 3]);
 		console.log(tensor.shape);
+		/*
+		const k = -4;
+		var laplacian = tf.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, -k, -k, -k, -k, -k, -k, -k, -k, -k, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [3, 3, 3, 3]);
+		tensor = tf.conv2d(tensor, laplacian, 1, 'same');
+		const minVal = tensor.min();
+		const maxVal = tensor.max();
+		tensor = tensor.sub(minVal).div(maxVal.sub(minVal));
+		tensor.array().then(scores => console.log(scores));
+		*/
 		var temp = tensor.reshape([1, 512, 512, 3]);
-		window.model.predict([temp]).array().then(function(scores){
-		console.log(scores);
-		var temp = createCanvasFromRGBAData(scores, 512, 512);
+		window.model.predict([temp]).array().then(function(scores){		
+		
+		var scoresTensor = tf.tensor(scores);
+		//console.log(scoresTensor.shape);
+		//const k = 4;
+		//var laplacian = tf.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, k, k, k, k, k, k, k, k, k, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [3, 3, 3, 3]);
+		//scoresTensor = tf.conv2d(scoresTensor, laplacian, 1, 'same');
+		//const minVal = scoresTensor.min();
+		//const maxVal = scoresTensor.max();
+		//scoresTensor = scoresTensor.sub(minVal).div(maxVal.sub(minVal));
+		//scoresTensor.array().then(scores => console.log(scores));
+		scoresTensor.array().then(
+			scores => {
+				var temp = createCanvasFromRGBAData(scores, 512, 512);
 		normalCanvas = temp;
 		normalImageData = new ImageData(temp.getContext('2d').getImageData(0, 0, 512, 512).data, 512, 512);
 		temp.setAttribute("id", "normalCanvas");
@@ -220,7 +307,7 @@ function test()
 		sobelFilter(1);
 
 		// COLOR TEXTURE
-		dummyDataTex = new THREE.DataTexture( input_texture, 512, 512, 
+		var dummyDataTex = new THREE.DataTexture( input_texture, 512, 512, 
 			THREE.RGBAFormat, 
 			THREE.UnsignedByteType, 
 			THREE.UVMapping, 
@@ -241,7 +328,7 @@ function test()
 		{
 			tempUInt[i] = temp[i];
 		}
-		dummyDataNorm = new THREE.DataTexture( tempUInt, 512, 512, 
+		var dummyDataNorm = new THREE.DataTexture( tempUInt, 512, 512, 
 			THREE.RGBAFormat, 
 			THREE.UnsignedByteType, 
 			THREE.UVMapping, 
@@ -255,6 +342,11 @@ function test()
 
 		material.needsUpdate = true;
 
+		if (!mesh) {
+			mesh = new THREE.Mesh(new THREE.BoxGeometry( 0.75, 0.75, 0.75 ), material);
+			scene.add(mesh);
+		}
+
 		normalScaleInputSlider = document.createElement("input");
 		normalScaleInputSlider.type = "range";
 		normalScaleInputSlider.min = 0;
@@ -266,6 +358,23 @@ function test()
 		normalScaleLabel = document.createElement("p");
 		normalScaleLabel.innerHTML = normalScaleInputSlider.value;
 		document.body.appendChild(normalScaleLabel);
+
+		cameraDistanceSlider = document.createElement("input");
+		cameraDistanceSlider.type = "range";
+		cameraDistanceSlider.min = 0;
+		cameraDistanceSlider.max = 100;
+		cameraDistanceSlider.value = 1;
+		cameraDistanceSlider.step = 1;
+		cameraDistanceSlider.oninput = function() {
+			camera.position.z = cameraDistanceSlider.value
+		}
+		document.body.appendChild(cameraDistanceSlider);
+
+		rotateMeshCheckbox = document.createElement('input');
+		rotateMeshCheckbox.type = "checkbox";
+		rotateMeshCheckbox.name = "name";
+		rotateMeshCheckbox.checked = true;
+		document.body.appendChild(rotateMeshCheckbox);
 
 		document.body.appendChild( renderer.domElement );
 
@@ -296,34 +405,44 @@ function test()
 			img.src = imageUrl;
 			document.body.append(img);
 			*/
+			}
+		);
 	  });
 	});	
 }
+
+var mesh;
+var light;
+var directionalLight;
+var renderer;
+var controls;
 
 const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
 camera.position.z = 1;
 const scene = new THREE.Scene();
 
-const geometry = new THREE.BoxGeometry( 0.75, 0.75, 0.75 );
-const material = new THREE.MeshPhongMaterial();
-
-const mesh = new THREE.Mesh( geometry, material );
-scene.add( mesh );
-
 // LIGHTS
-const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+light = new THREE.AmbientLight( 0x404040 ); // soft white light
 scene.add( light );
-const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
 scene.add( directionalLight );
 
-const renderer = new THREE.WebGLRenderer( { antialias: true } );
+//const geometry = new THREE.BoxGeometry( 0.75, 0.75, 0.75 );
+const material = new THREE.MeshPhongMaterial();
+
+renderer = new THREE.WebGLRenderer( { antialias: true } );
 renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor(0xccccff);
 renderer.setAnimationLoop( animation );
+controls = new OrbitControls(camera, renderer.domElement);
 
 function animation( time ) {
+	if (rotateMeshCheckbox && rotateMeshCheckbox.checked) {
+		mesh.rotation.x = time / 2000;
+		mesh.rotation.y = time / 1000;
+	}
 
-	mesh.rotation.x = time / 2000;
-	mesh.rotation.y = time / 1000;
+	controls.update();
 
 	renderer.render( scene, camera );
 
