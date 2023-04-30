@@ -1,0 +1,5 @@
+Веб-сервис:
+https://newohrim.github.io/normal-maps-generation/web/
+
+Репозиторий с кодом:
+https://github.com/newohrim/normal-maps-generation
