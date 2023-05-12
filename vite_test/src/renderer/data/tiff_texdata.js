@@ -9,17 +9,8 @@ export default class TiffTextureData extends TextureData {
 		});
     }
 
-    getTextureData() { return this.#texData; }
-
-    getWidth() { return this.#imgCanvas.width; }
-
-    getHeight() { return this.#imgCanvas.height; }
-
     loadData(dataArr) {
-        this.#imgCanvas = new Tiff({ buffer: dataArr }).toCanvas();
-        this.#texData = this.#imgCanvas.getContext('2d').getImageData(0, 0, this.#imgCanvas.width, this.#imgCanvas.height);
+        this.imgCanvas = new Tiff({ buffer: dataArr }).toCanvas();
+        this.texData = this.imgCanvas.getContext('2d').getImageData(0, 0, this.imgCanvas.width, this.imgCanvas.height);
     }
-
-    #imgCanvas;
-    #texData;
 }

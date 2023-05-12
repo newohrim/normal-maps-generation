@@ -1,4 +1,4 @@
-import Renderer from './renderer';
+import Renderer from './renderer'
 import * as THREE from 'three'
 
 export default class ThreeRenderer extends Renderer {
@@ -22,7 +22,17 @@ export default class ThreeRenderer extends Renderer {
         return new THREE.Mesh(new THREE.BoxGeometry( 0.75, 0.75, 0.75 ));
     }
     createTexture(textureData) {
-        
+        return new THREE.DataTexture(
+            textureData.getTextureData().data, 
+            textureData.getWidth(), 
+            textureData.getHeight(), 
+            THREE.RGBAFormat, 
+		    THREE.UnsignedByteType, 
+		    THREE.UVMapping, 
+		    THREE.ClampToEdgeWrapping, 
+		    THREE.ClampToEdgeWrapping, 
+		    THREE.LinearFilter, 
+		    THREE.LinearMipmapLinearFilter);
     }
     createDefaultMaterial() {
         return new THREE.MeshPhongMaterial();

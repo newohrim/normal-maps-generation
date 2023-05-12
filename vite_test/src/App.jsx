@@ -10,6 +10,7 @@ import TextureLoader from './loaders/tex_loader.js'
 import NormalMapGenerator from './model/normal_map_generator'
 import ThreeRenderer from './renderer/three_renderer'
 import SceneCreator from './renderer/scene_creator'
+import TextureData from './renderer/data/texdata'
 
 const normalMapGenerator = new NormalMapGenerator();
 const threeRenderer = new ThreeRenderer();
@@ -29,6 +30,9 @@ var normalTexImgData;
 function generateButtonClickedHandle(setNormalMapGenerated) {
    normalMapGenerator.generateNormalMap(textureImgData, canvas => {
       normalTexImgData = canvas.getContext('2d').getImageData(0, 0, 512, 512);
+      const normalTex = new TextureData(normalTexImgData, canvas);
+      const threeNormalTex = threeRenderer.createTexture(normalTex);
+      sceneCreator.setNormalMapTexture(threeNormalTex);
       setNormalMapGenerated(true);
    });
 }
@@ -44,6 +48,8 @@ function TexturePlaceholder({setImgLoaded, textureWidth, textureHeight}) {
       upload_texture(textureWidth, textureHeight, 
          imageData => {
             textureImgData = imageData;
+            const threeColorTex = threeRenderer.createTexture(imageData);
+            sceneCreator.setColorTexture(threeColorTex);
             setImgLoaded(true);
             //var canvas = canvasRef.current;
             //canvas.putImageData(textureImgData);
@@ -77,38 +83,6 @@ function TextureCanvas({textureWidth, textureHeight, contentImageData}) {
 
 function RendererCanvas() {
    const canvasRef = useRef(null);
-
-   /*
-   const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
-   camera.position.z = 1;
-   const scene = new THREE.Scene();
-
-   // LIGHTS
-   var light = new THREE.AmbientLight( 0x404040 ); // soft white light
-   scene.add( light );
-   var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-   scene.add( directionalLight );
-
-   //const geometry = new THREE.BoxGeometry( 0.75, 0.75, 0.75 );
-   const material = new THREE.MeshPhongMaterial();
-
-   var mesh = new THREE.Mesh(new THREE.BoxGeometry( 0.75, 0.75, 0.75 ), material);
-   scene.add(mesh);
-
-   renderer = new THREE.WebGLRenderer( { antialias: true } );
-   renderer.setSize( window.innerWidth, window.innerHeight );
-   renderer.setClearColor(0xccccff);
-   renderer.setAnimationLoop( animation );
-   renderer.render( scene, camera );
-   function animation( time ) {
-	   mesh.rotation.x = time / 2000;
-	   mesh.rotation.y = time / 1000;
-
-	   //controls.update();
-
-	   renderer.render( scene, camera );
-   }
-   */
 
    useEffect(() => {
       canvasRef.current.appendChild(threeRenderer.renderer.domElement);

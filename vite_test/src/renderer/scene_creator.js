@@ -1,4 +1,5 @@
-import Renderer from "./renderer";
+import Renderer from "./renderer"
+import * as THREE from 'three'
 
 export default class SceneCreator {
     constructor(renderer) {
@@ -13,14 +14,33 @@ export default class SceneCreator {
         this.#mainCamera = this.#renderer.createCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
         this.#mainCamera.position.z = 1;
         this.#renderer.setActiveCamera(this.#mainCamera);
-        this.#renderer.addToActiveScene(this.#renderer.createAmbientLight(0x404040, 0.35));
-        this.#renderer.addToActiveScene(this.#renderer.createDirectionalLight(0xffffff, 0.5));
+        this.#ambientLight = this.#renderer.createAmbientLight(0x404040, 0.35);
+        this.#renderer.addToActiveScene(this.#ambientLight);
+        this.#directionalLight = this.#renderer.createDirectionalLight(0xffffff, 0.5);
+        this.#directionalLight.position.set(2, 10, 10);
+        this.#directionalLight.target.position.set(0, 0, 0);
+        //this.#directionalLight.target.setRotationFromEuler(new THREE.Euler(-3.14, -3.14, -3.14));
+        this.#renderer.addToActiveScene(this.#directionalLight);
+        this.#renderer.addToActiveScene(this.#directionalLight.target);
         this.#mainMaterial = this.#renderer.createDefaultMaterial();
         this.#mainObject = this.#renderer.createMesh();
         this.#mainObject.material = this.#mainMaterial;
         this.#renderer.addToActiveScene(this.#mainObject);
         this.#renderer.update = time => this.#update(time);
         //this.#renderer.renderer.setAnimationLoop(() => { this.#renderer.renderLoop(); });
+    }
+
+    setColorTexture(colorTex) {
+        colorTex.generateMipmaps = true;
+		this.#mainMaterial.map = colorTex;
+		colorTex.needsUpdate = true;
+        this.#mainMaterial.needsUpdate = true;
+    }
+
+    setNormalMapTexture(normalMapTex) {
+		this.#mainMaterial.normalMap = normalMapTex;
+        this.#mainMaterial.normalMap.needsUpdate = true;
+        this.#mainMaterial.needsUpdate = true;
     }
 
     #update(time) {
@@ -33,4 +53,6 @@ export default class SceneCreator {
     #mainCamera;
     #mainMaterial;
     #mainObject;
+    #directionalLight;
+    #ambientLight;
 }
