@@ -64,10 +64,50 @@ export default class SceneCreator {
             fragmentShader: `
                 varying vec2 vUv;
                 uniform sampler2D inputTex;
+
+                const float offset = 1.0f;
          
+                const vec2 offsets[9] = vec2[9](
+                    vec2(-offset,  offset), // top-left
+                    vec2( 0.0f,    offset), // top-center
+                    vec2( offset,  offset), // top-right
+                    vec2(-offset,  0.0f),   // center-left
+                    vec2( 0.0f,    0.0f),   // center-center
+                    vec2( offset,  0.0f),   // center-right
+                    vec2(-offset, -offset), // bottom-left
+                    vec2( 0.0f,   -offset), // bottom-center
+                    vec2( offset, -offset)  // bottom-right    
+                );
+                
+                const float kernel_x[9] = float[9](
+                    1.0f, 0.0f, -1.0f,
+                    2.0f, 0.0f, -2.0f,
+                    1.0f, 0.0f, -1.0f
+                );
+                const float kernel_y[9] = float[9](
+                    1.0f, 2.0f, 1.0f,
+                    0.0f, 0.0f, 0.0f,
+                    -1.0f, -2.0f, -1.0f
+                );
+                
                 void main() {
-                    vec4 tx = texture2D(inputTex, vUv);
-                    gl_FragColor = vec4(tx.rgb, 1.0);
+                    //vec4 tx = texture2D(inputTex, vUv);
+                    //gl_FragColor = vec4(tx.rgb, 1.0);
+                    
+                    vec3 sampleTex[9];
+                    for(int i = 0; i < 9; i++)
+                    {
+                        sampleTex[i] = vec3(texelFetch(inputTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
+                        float average = (sampleTex[i].r + sampleTex[i].g + sampleTex[i].b) / 3.0;
+                        sampleTex[i] = vec3(average, average, average);
+                    }
+                    vec3 col = vec3(0.0);
+                    for(int i = 0; i < 9; i++)
+                        col += sampleTex[i] * (kernel_x[i] + kernel_y[i]) / 2.0f;
+                    //if (length(col) > 1.0f)
+                        //col = vec3(1.0f, 0.0f, 0.0f);
+                    
+                    gl_FragColor = vec4(col, 1.0);
                 }
             `
         });
