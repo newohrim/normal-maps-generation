@@ -6,9 +6,9 @@ export default class TextureData {
 
     getTextureData() { return this.texData; }
 
-    getWidth() { return this.imgCanvas.width; }
+    getWidth() { return this.texData.width; }
 
-    getHeight() { return this.imgCanvas.height; }
+    getHeight() { return this.texData.height; }
 
     loadData(dataArr) {
         texData = new ImageData(dataArr, width, height);

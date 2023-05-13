@@ -2,8 +2,9 @@ import Renderer from "./renderer"
 import * as THREE from 'three'
 
 export default class SceneCreator {
-    constructor(renderer) {
+    constructor(renderer, rendererToTex) {
         this.#renderer = renderer;
+        this.#rendererToTex = rendererToTex;
     }
 
     init() {
@@ -35,6 +36,8 @@ export default class SceneCreator {
 		this.#mainMaterial.map = colorTex;
 		colorTex.needsUpdate = true;
         this.#mainMaterial.needsUpdate = true;
+
+        this.#updateRenderToTexTargetSizeFromTexture(colorTex);
     }
 
     setNormalMapTexture(normalMapTex) {
@@ -43,12 +46,54 @@ export default class SceneCreator {
         this.#mainMaterial.needsUpdate = true;
     }
 
+    applyFilterToTexture(filter, tex) {
+        const testMat = new THREE.ShaderMaterial({
+            uniforms: {
+                inputTex: {
+                    value: tex
+                }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);    
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform sampler2D inputTex;
+         
+                void main() {
+                    vec4 tx = texture2D(inputTex, vUv);
+                    gl_FragColor = vec4(tx.rgb, 1.0);
+                }
+            `
+        });
+        this.#rendererToTex.setActiveMaterial(testMat);
+        this.#rendererToTex.render();
+        const gl = this.#rendererToTex.renderer.getContext();
+        const renderTarget = this.#rendererToTex.getRenderTarget();
+        const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
+        gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
+
+        return quadTexData;
+    }
+    
     #update(time) {
         this.#mainObject.rotation.x = time / 2000;
 		this.#mainObject.rotation.y = time / 2000;
     }
+    
+    #updateRenderToTexTargetSizeFromTexture(sourceTex) {
+        // TODO: add condition if sourceTex dimension changed
+        this.#rendererToTex.setViewportSize(
+            sourceTex.image.width, sourceTex.image.height);
+    }
 
     #renderer;
+    #rendererToTex;
     #mainScene;
     #mainCamera;
     #mainMaterial;

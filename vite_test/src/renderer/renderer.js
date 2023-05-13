@@ -10,6 +10,9 @@ export default class Renderer {
     
     setActiveScene(scene) {}
     setActiveCamera(camera) {}
+    setActiveMaterial(material) {}
+    setViewportSize(width, height) {}
+    getRenderTarget() {}
     update;
     render;
 

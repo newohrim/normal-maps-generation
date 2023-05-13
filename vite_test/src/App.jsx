@@ -9,12 +9,14 @@ import FileLoader from './loaders/file_loader.js'
 import TextureLoader from './loaders/tex_loader.js'
 import NormalMapGenerator from './model/normal_map_generator'
 import ThreeRenderer from './renderer/three_renderer'
+import ThreeRenderToTexture from './renderer/render_to_tex'
 import SceneCreator from './renderer/scene_creator'
 import TextureData from './renderer/data/texdata'
 
 const normalMapGenerator = new NormalMapGenerator();
 const threeRenderer = new ThreeRenderer();
-const sceneCreator = new SceneCreator(threeRenderer);
+const threeRenderToTexture = new ThreeRenderToTexture();
+const sceneCreator = new SceneCreator(threeRenderer, threeRenderToTexture);
 var renderer;
 
 window.onload = function() {
@@ -26,6 +28,7 @@ window.onload = function() {
 
 var textureImgData;
 var normalTexImgData;
+var filteredTexData;
 
 function generateButtonClickedHandle(setNormalMapGenerated) {
    normalMapGenerator.generateNormalMap(textureImgData, canvas => {
@@ -50,6 +53,7 @@ function TexturePlaceholder({setImgLoaded, textureWidth, textureHeight}) {
             textureImgData = imageData;
             const threeColorTex = threeRenderer.createTexture(imageData);
             sceneCreator.setColorTexture(threeColorTex);
+            filteredTexData = sceneCreator.applyFilterToTexture(null, threeColorTex);
             setImgLoaded(true);
             //var canvas = canvasRef.current;
             //canvas.putImageData(textureImgData);
@@ -115,6 +119,9 @@ function App() {
             ) : (
             <TexturePlaceholder setImgLoaded={setImgLoaded} textureWidth={textureWidth} textureHeight={textureHeight} />
          )}
+         {imgLoaded ? (
+            <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={filteredTexData} />
+            ) : (<></>)}
          {normalMapGenerated ? (
             <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={normalTexImgData} />
          ) : (<></>)}
