@@ -25,10 +25,10 @@ window.onload = function() {
    setRendererInitializedOuter(true);
 }
 
-
 var textureImgData;
 var normalTexImgData;
 var filteredTexData;
+var strengthenedNormalTexData;
 
 function generateButtonClickedHandle(setNormalMapGenerated) {
    normalMapGenerator.generateNormalMap(textureImgData, canvas => {
@@ -36,6 +36,7 @@ function generateButtonClickedHandle(setNormalMapGenerated) {
       const normalTex = new TextureData(normalTexImgData, canvas);
       const threeNormalTex = threeRenderer.createTexture(normalTex);
       sceneCreator.setNormalMapTexture(threeNormalTex);
+      strengthenedNormalTexData = sceneCreator.strengthenNormals(new THREE.DataTexture(filteredTexData.data, filteredTexData.width, filteredTexData.height, THREE.RGBAFormat));
       setNormalMapGenerated(true);
    });
 }
@@ -85,11 +86,11 @@ function TextureCanvas({textureWidth, textureHeight, contentImageData}) {
    );
 }
 
-function RendererCanvas() {
+function RendererCanvas({rendererObj}) {
    const canvasRef = useRef(null);
 
    useEffect(() => {
-      canvasRef.current.appendChild(threeRenderer.renderer.domElement);
+      canvasRef.current.appendChild(rendererObj.renderer.domElement);
    }, []);
 
    return (
@@ -125,7 +126,10 @@ function App() {
          {normalMapGenerated ? (
             <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={normalTexImgData} />
          ) : (<></>)}
-         {rendererInitialized ? (<RendererCanvas/>) : (<></>)}
+         {normalMapGenerated ? (
+            <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={strengthenedNormalTexData} />
+         ) : (<></>)}
+         {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderer}/>) : (<></>)}
       </div>
       <div className="card">
          <button onClick={() => generateButtonClickedHandle(setNormalMapGenerated)}>

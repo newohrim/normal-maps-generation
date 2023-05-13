@@ -1,5 +1,6 @@
-import Renderer from "./renderer"
-import * as THREE from 'three'
+import Renderer from "./renderer";
+import TextureData from "./data/texdata";
+import * as THREE from 'three';
 
 export default class SceneCreator {
     constructor(renderer, rendererToTex) {
@@ -117,6 +118,49 @@ export default class SceneCreator {
         const renderTarget = this.#rendererToTex.getRenderTarget();
         const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
         gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
+
+        return quadTexData;
+    }
+
+    strengthenNormals(mask) {
+        mask.needsUpdate = true;
+        const testMat = new THREE.ShaderMaterial({
+            uniforms: {
+                normalTex: { value: this.#mainMaterial.normalMap },
+                mask: { value: mask }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);    
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform sampler2D normalTex;
+                uniform sampler2D mask;
+                
+                void main() {
+                    float mask = max(texture2D(mask, vUv).x, 0.0) + 1.0f;
+                    vec3 normal = texture2D(normalTex, vUv).xyz;
+                    //normal = normal * 2.0f - 1.0f;
+                    normal.xy *= mask * 1.0f;
+                    //normal = normalize(normal);
+                    gl_FragColor = vec4(normal, 1.0);
+                }
+            `
+        });
+        this.#rendererToTex.setActiveMaterial(testMat);
+        this.#rendererToTex.render();
+        const gl = this.#rendererToTex.renderer.getContext();
+        const renderTarget = this.#rendererToTex.getRenderTarget();
+        const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
+        gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
+        this.#mainMaterial.normalMap = this.#renderer.createTexture(new TextureData(quadTexData));
+        this.#mainMaterial.normalMap.needsUpdate = true;
+        this.#mainMaterial.needsUpdate = true;
 
         return quadTexData;
     }
