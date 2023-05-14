@@ -6,6 +6,9 @@ export default class SceneCreator {
     constructor(renderer, rendererToTex) {
         this.#renderer = renderer;
         this.#rendererToTex = rendererToTex;
+        this.normalMapParams = {
+            strength: 1.0
+        };
     }
 
     init() {
@@ -29,7 +32,15 @@ export default class SceneCreator {
         this.#mainObject.material = this.#mainMaterial;
         this.#renderer.addToActiveScene(this.#mainObject);
         this.#renderer.update = time => this.#update(time);
-        //this.#renderer.renderer.setAnimationLoop(() => { this.#renderer.renderLoop(); });
+
+        this.#rendererToTex.renderer.setSize(512, 512);
+        this.#rendererToTex.setViewportSize(512, 512);
+        this.#rendererToTex.update = time => this.#updateNormalMapParams(time);
+        this.#rendererToTex.renderComplete = () => {
+            const rt = this.#rendererToTex.getRenderTarget();
+            this.#mainMaterial.normalMap = rt; 
+            this.#mainMaterial.needsUpdate = true; 
+        };
     }
 
     setColorTexture(colorTex) {
@@ -37,7 +48,7 @@ export default class SceneCreator {
 		this.#mainMaterial.map = colorTex;
 		colorTex.needsUpdate = true;
         this.#mainMaterial.needsUpdate = true;
-
+        
         this.#updateRenderToTexTargetSizeFromTexture(colorTex);
     }
 
@@ -45,6 +56,83 @@ export default class SceneCreator {
 		this.#mainMaterial.normalMap = normalMapTex;
         this.#mainMaterial.normalMap.needsUpdate = true;
         this.#mainMaterial.needsUpdate = true;
+
+        this.drawNormalTex(normalMapTex, this.normalMapParams);
+    }
+
+    drawNormalTex(tex, params) {
+        const testMat = new THREE.ShaderMaterial({
+            uniforms: {
+                normalTex: { value: tex },
+                strength: { type: 'f', value: params.strength }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);    
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform sampler2D normalTex;
+                uniform float strength;
+
+                const float offset = 1.0f;
+         
+                const vec2 offsets[9] = vec2[9](
+                    vec2(-offset,  offset), // top-left
+                    vec2( 0.0f,    offset), // top-center
+                    vec2( offset,  offset), // top-right
+                    vec2(-offset,  0.0f),   // center-left
+                    vec2( 0.0f,    0.0f),   // center-center
+                    vec2( offset,  0.0f),   // center-right
+                    vec2(-offset, -offset), // bottom-left
+                    vec2( 0.0f,   -offset), // bottom-center
+                    vec2( offset, -offset)  // bottom-right    
+                );
+                
+                const float kernel_x[9] = float[9](
+                    1.0f, 0.0f, -1.0f,
+                    2.0f, 0.0f, -2.0f,
+                    1.0f, 0.0f, -1.0f
+                );
+                const float kernel_y[9] = float[9](
+                    1.0f, 2.0f, 1.0f,
+                    0.0f, 0.0f, 0.0f,
+                    -1.0f, -2.0f, -1.0f
+                );
+                
+                void main() {
+                    //vec4 tx = texture2D(normalTex, vUv);
+                    //gl_FragColor = vec4(tx.rgb, 1.0);
+                    
+                    vec3 sampleTex[9];
+                    for(int i = 0; i < 9; i++)
+                    {
+                        sampleTex[i] = vec3(texelFetch(normalTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
+                        float average = (sampleTex[i].r + sampleTex[i].g + sampleTex[i].b) / 3.0;
+                        sampleTex[i] = vec3(average, average, average);
+                    }
+                    vec3 col = vec3(0.0);
+                    for(int i = 0; i < 9; i++)
+                        col += sampleTex[i] * (kernel_x[i] + kernel_y[i]) / 2.0f;
+                    //if (length(col) > 1.0f)
+                        //col = vec3(1.0f, 0.0f, 0.0f);
+
+                    float mask = max(col.x, 0.0) + 1.0f;
+                    vec3 normal = texture2D(normalTex, vUv).xyz; // = sampleTex[4]
+                    //normal = normal * 2.0f - 1.0f;
+                    normal.xy *= mask * strength;
+                    //normal = normalize(normal);
+                    gl_FragColor = vec4(normal, 1.0);
+                }
+            `
+        });
+        this.#normalMapTexMaterial = testMat;
+        this.#rendererToTex.setActiveMaterial(testMat);
+        this.#rendererToTex.requestRender();
     }
 
     applyFilterToTexture(filter, tex) {
@@ -113,21 +201,23 @@ export default class SceneCreator {
             `
         });
         this.#rendererToTex.setActiveMaterial(testMat);
-        this.#rendererToTex.render();
-        const gl = this.#rendererToTex.renderer.getContext();
-        const renderTarget = this.#rendererToTex.getRenderTarget();
-        const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
-        gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
+        this.#rendererToTex.requestRender();
+        //const gl = this.#rendererToTex.renderer.getContext();
+        //const renderTarget = this.#rendererToTex.getRenderTarget();
+        //renderTarget.needsUpdate = true;
+        //const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
+        //gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
 
-        return quadTexData;
+        //return quadTexData;
     }
 
-    strengthenNormals(mask) {
+    strengthenNormals(mask, strength) {
         mask.needsUpdate = true;
         const testMat = new THREE.ShaderMaterial({
             uniforms: {
                 normalTex: { value: this.#mainMaterial.normalMap },
-                mask: { value: mask }
+                mask: { value: mask },
+                strength: { type: 'f', value: strength }
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -141,17 +231,19 @@ export default class SceneCreator {
                 varying vec2 vUv;
                 uniform sampler2D normalTex;
                 uniform sampler2D mask;
+                uniform float strength;
                 
                 void main() {
                     float mask = max(texture2D(mask, vUv).x, 0.0) + 1.0f;
                     vec3 normal = texture2D(normalTex, vUv).xyz;
                     //normal = normal * 2.0f - 1.0f;
-                    normal.xy *= mask * 1.0f;
+                    normal.xy *= mask * strength;
                     //normal = normalize(normal);
                     gl_FragColor = vec4(normal, 1.0);
                 }
             `
         });
+        testMat.needsUpdate = true;
         this.#rendererToTex.setActiveMaterial(testMat);
         this.#rendererToTex.render();
         const gl = this.#rendererToTex.renderer.getContext();
@@ -169,6 +261,14 @@ export default class SceneCreator {
         this.#mainObject.rotation.x = time / 2000;
 		this.#mainObject.rotation.y = time / 2000;
     }
+
+    #updateNormalMapParams(time) {
+        if (this.#normalMapTexMaterial == null) {
+            return;
+        }
+
+        this.#normalMapTexMaterial.uniforms.strength.value = this.normalMapParams.strength;
+    }
     
     #updateRenderToTexTargetSizeFromTexture(sourceTex) {
         // TODO: add condition if sourceTex dimension changed
@@ -176,11 +276,19 @@ export default class SceneCreator {
             sourceTex.image.width, sourceTex.image.height);
     }
 
+    normalMapParamsChangedHandle() { 
+        this.#updateNormalMapParams();
+        this.#rendererToTex.requestRender() 
+    }
+
+    normalMapParams;
+
     #renderer;
     #rendererToTex;
     #mainScene;
     #mainCamera;
     #mainMaterial;
+    #normalMapTexMaterial;
     #mainObject;
     #directionalLight;
     #ambientLight;

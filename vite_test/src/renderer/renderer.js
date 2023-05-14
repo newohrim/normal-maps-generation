@@ -13,8 +13,10 @@ export default class Renderer {
     setActiveMaterial(material) {}
     setViewportSize(width, height) {}
     getRenderTarget() {}
+    requestRender() {}
     update;
     render;
+    renderComplete;
 
     renderLoop(time) {
         if (this.update) {
@@ -23,6 +25,9 @@ export default class Renderer {
         if (this.render) {
             this.render();
         }
+        //if (this.renderComplete) {
+        //    this.renderComplete();
+        //}
     }
     
     renderer;

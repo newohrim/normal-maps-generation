@@ -11,8 +11,13 @@ export default class ThreeRenderToTexture extends Renderer {
         this.#activeScene.add(this.#quadObj);
 
         this.render = function() {
-            this.renderToTex();
+            if (this.#renderRequested) {
+                this.renderToTex();
+                this.#renderRequested = false;
+                this.renderComplete();
+            }
         };
+        this.renderer.setAnimationLoop(time => this.renderLoop(time));
     }
 
     setActiveMaterial(material) {
@@ -20,23 +25,32 @@ export default class ThreeRenderToTexture extends Renderer {
     }
 
     setViewportSize(width, height) {
-        this.renderer.setViewport(width, height);
+        //this.renderer.setViewport(width, height);
         this.#bufferTex = new THREE.WebGLRenderTarget(width, height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
-        this.renderer.setRenderTarget(this.#bufferTex);
+        //this.renderer.setRenderTarget(this.#bufferTex);
     }
 
-    getRenderTarget() { return this.#bufferTex; }
+    getRenderTarget() { 
+        //return this.#bufferTex;
+        return new THREE.CanvasTexture(this.renderer.domElement);
+    }
+
+    requestRender() { this.#renderRequested = true; }
 
     renderToTex() {
         if (this.#quadObj.material == null) {
             console.error("render to texture material was null. call setActiveMaterial");
             return;
         }
-        if (this.#bufferTex == null) {
-            console.error("render to texture bufferTex was null. call setViewport");
-            return;
-        }
+        //if (this.#bufferTex == null) {
+        //    console.error("render to texture bufferTex was null. call setViewport");
+        //    return;
+        //}
 
+        //this.renderer.setRenderTarget(this.#bufferTex);
+        //this.renderer.render(this.#activeScene, this.#activeCamera);
+        //this.#bufferTex.texture.needsUpdate = true;
+        //this.renderer.setRenderTarget(null);
         this.renderer.render(this.#activeScene, this.#activeCamera);
     }
 
@@ -44,4 +58,6 @@ export default class ThreeRenderToTexture extends Renderer {
     #activeCamera;
     #activeScene;
     #bufferTex;
+    #canvasTex;
+    #renderRequested = false;
 }
