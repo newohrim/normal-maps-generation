@@ -14,25 +14,30 @@ export default class ThreeRenderToTexture extends Renderer {
             if (this.#renderRequested) {
                 this.renderToTex();
                 this.#renderRequested = false;
-                this.renderComplete();
+                if (this.renderComplete)
+                    this.renderComplete();
             }
         };
         this.renderer.setAnimationLoop(time => this.renderLoop(time));
     }
 
     setActiveMaterial(material) {
+        this.#activeMaterial = material;
         this.#quadObj.material = material;
     }
 
     setViewportSize(width, height) {
         //this.renderer.setViewport(width, height);
         this.#bufferTex = new THREE.WebGLRenderTarget(width, height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
-        //this.renderer.setRenderTarget(this.#bufferTex);
+        //if (!this.renderToCanvas)
+            //this.renderer.setRenderTarget(this.#bufferTex);
     }
 
     getRenderTarget() { 
-        //return this.#bufferTex;
-        return new THREE.CanvasTexture(this.renderer.domElement);
+        //if (!this.renderToCanvas)
+        return new THREE.Texture(this.renderer.domElement);
+            //return this.#bufferTex.texture;
+        //return new THREE.CanvasTexture(this.renderer.domElement);
     }
 
     requestRender() { this.#renderRequested = true; }
@@ -51,11 +56,28 @@ export default class ThreeRenderToTexture extends Renderer {
         //this.renderer.render(this.#activeScene, this.#activeCamera);
         //this.#bufferTex.texture.needsUpdate = true;
         //this.renderer.setRenderTarget(null);
+        //if (this.renderToCanvas)
+        //    console.log("render to canvas");
+        this.#quadObj.material = this.#activeMaterial;
+        this.renderer.setRenderTarget(this.#bufferTex);
         this.renderer.render(this.#activeScene, this.#activeCamera);
+        this.#bufferTex.texture.needsUpdate = true;
+
+        this.renderer.setRenderTarget(null);
+        this.testMat.uniforms.tex.value = this.#bufferTex.texture;
+        this.testMat.needsUpdate = true;
+        this.#quadObj.material = this.testMat;
+        this.renderer.render(this.#activeScene, this.#activeCamera);
+        //this.renderer.setRenderTarget(null);
+        //this.renderer.render(this.#activeScene, this.#activeCamera);
     }
+
+    renderToCanvas = false;
+    testMat = null;
 
     #quadObj;
     #activeCamera;
+    #activeMaterial;
     #activeScene;
     #bufferTex;
     #canvasTex;

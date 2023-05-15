@@ -1,11 +1,13 @@
 import Renderer from "./renderer";
+import ThreeRenderToTexture from "./render_to_tex";
 import TextureData from "./data/texdata";
 import * as THREE from 'three';
 
 export default class SceneCreator {
-    constructor(renderer, rendererToTex) {
+    constructor(renderer, rendererToTex, rendererToCanvas) {
         this.#renderer = renderer;
         this.#rendererToTex = rendererToTex;
+        this.#rendererToCanvas = rendererToCanvas;
         this.normalMapParams = {
             strength: 1.0
         };
@@ -33,14 +35,25 @@ export default class SceneCreator {
         this.#renderer.addToActiveScene(this.#mainObject);
         this.#renderer.update = time => this.#update(time);
 
-        this.#rendererToTex.renderer.setSize(512, 512);
+        this.#rendererToTex.renderToCanvas = false;
         this.#rendererToTex.setViewportSize(512, 512);
+        this.#rendererToTex.renderer.setSize(512, 512);
         this.#rendererToTex.update = time => this.#updateNormalMapParams(time);
         this.#rendererToTex.renderComplete = () => {
             const rt = this.#rendererToTex.getRenderTarget();
+            rt.needsUpdate = true;
             this.#mainMaterial.normalMap = rt; 
             this.#mainMaterial.needsUpdate = true; 
+            this.#drawToTexMat.uniforms.tex.value = rt;
+            //this.#rendererToCanvas.requestRender();
         };
+        this.#rendererToTex.testMat = this.createDrawToTexMaterial();
+
+        this.#rendererToCanvas.renderToCanvas = true;
+        this.#rendererToCanvas.setViewportSize(512, 512);
+        this.#rendererToCanvas.renderer.setSize(512, 512);
+        this.#drawToTexMat = this.createDrawToTexMaterial();
+        this.#rendererToCanvas.setActiveMaterial(this.#drawToTexMat);
     }
 
     setColorTexture(colorTex) {
@@ -58,6 +71,34 @@ export default class SceneCreator {
         this.#mainMaterial.needsUpdate = true;
 
         this.drawNormalTex(normalMapTex, this.normalMapParams);
+    }
+
+    createDrawToTexMaterial() {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                tex: { value: null },
+            },
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);    
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform sampler2D tex;
+                
+                void main() {
+                    //vec4 tx = texture2D(tex, vUv);
+                    //gl_FragColor = vec4(0, vUv.x, vUv.y, 1.0);
+
+                    vec4 col = texture2D(tex, vUv);
+                    gl_FragColor = vec4(col.rgb, 1.0);
+                }
+            `
+        });
     }
 
     drawNormalTex(tex, params) {
@@ -127,6 +168,7 @@ export default class SceneCreator {
                     normal.xy *= mask * strength;
                     //normal = normalize(normal);
                     gl_FragColor = vec4(normal, 1.0);
+                    //gl_FragColor = vec4(0, vUv.x, vUv.y, 1.0);
                 }
             `
         });
@@ -285,6 +327,7 @@ export default class SceneCreator {
 
     #renderer;
     #rendererToTex;
+    #rendererToCanvas;
     #mainScene;
     #mainCamera;
     #mainMaterial;
@@ -292,4 +335,6 @@ export default class SceneCreator {
     #mainObject;
     #directionalLight;
     #ambientLight;
+
+    #drawToTexMat;
 }

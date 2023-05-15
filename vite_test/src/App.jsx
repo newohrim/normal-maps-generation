@@ -17,7 +17,8 @@ import TextureData from './renderer/data/texdata'
 const normalMapGenerator = new NormalMapGenerator();
 const threeRenderer = new ThreeRenderer();
 const threeRenderToTexture = new ThreeRenderToTexture();
-const sceneCreator = new SceneCreator(threeRenderer, threeRenderToTexture);
+const threeRenderToCanvas = new ThreeRenderToTexture();
+const sceneCreator = new SceneCreator(threeRenderer, threeRenderToTexture, threeRenderToCanvas);
 var renderer;
 
 window.onload = function() {
