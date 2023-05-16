@@ -9,7 +9,8 @@ export default class SceneCreator {
         this.#rendererToTex = rendererToTex;
         this.#rendererToCanvas = rendererToCanvas;
         this.normalMapParams = {
-            strength: 1.0
+            strength: 1.0,
+            nStrength: 10
         };
     }
 
@@ -53,6 +54,8 @@ export default class SceneCreator {
             //this.#rendererToCanvas.requestRender();
         };
         this.#rendererToTex.testMat = this.createDrawToTexMaterial();
+        this.#normalMapStrengthMat = this.createStrengthenNormalsMaterial(null, this.normalMapParams);
+        this.#rendererToTex.addShaderPass(this.#normalMapStrengthMat, "tex");
 
         this.#rendererToCanvas.renderToCanvas = true;
         this.#rendererToCanvas.setViewportSize(512, 512);
@@ -125,7 +128,7 @@ export default class SceneCreator {
                 uniform sampler2D normalTex;
                 uniform float strength;
 
-                const float offset = 1.0f;
+                const float offset = 1.0f / 300.0f;
          
                 const vec2 offsets[9] = vec2[9](
                     vec2(-offset,  offset), // top-left
@@ -157,7 +160,8 @@ export default class SceneCreator {
                     vec3 sampleTex[9];
                     for(int i = 0; i < 9; i++)
                     {
-                        sampleTex[i] = vec3(texelFetch(normalTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
+                        //sampleTex[i] = vec3(texelFetch(normalTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
+                        sampleTex[i] = texture2D(normalTex, vUv + offsets[i]).xyz;
                         float average = (sampleTex[i].r + sampleTex[i].g + sampleTex[i].b) / 3.0;
                         sampleTex[i] = vec3(average, average, average);
                     }
@@ -271,13 +275,11 @@ export default class SceneCreator {
         //return quadTexData;
     }
 
-    strengthenNormals(mask, strength) {
-        mask.needsUpdate = true;
-        const testMat = new THREE.ShaderMaterial({
+    createStrengthenNormalsMaterial(tex, params) {
+        return new THREE.ShaderMaterial({
             uniforms: {
-                normalTex: { value: this.#mainMaterial.normalMap },
-                mask: { value: mask },
-                strength: { type: 'f', value: strength }
+                tex: { value: tex },
+                strength: { type: 'f', value: params.nStrength }
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -289,32 +291,17 @@ export default class SceneCreator {
             `,
             fragmentShader: `
                 varying vec2 vUv;
-                uniform sampler2D normalTex;
-                uniform sampler2D mask;
+                uniform sampler2D tex;
                 uniform float strength;
                 
                 void main() {
-                    float mask = max(texture2D(mask, vUv).x, 0.0) + 1.0f;
-                    vec3 normal = texture2D(normalTex, vUv).xyz;
-                    //normal = normal * 2.0f - 1.0f;
-                    normal.xy *= mask * strength;
-                    //normal = normalize(normal);
-                    gl_FragColor = vec4(normal, 1.0);
+                    vec3 col = texture2D(tex, vUv).xyz;
+                    col.xy *= strength;
+                    col.z = mix(1.0f, col.z, clamp(strength, 0.0f, 1.0f));
+                    gl_FragColor = vec4(col, 1.0);
                 }
             `
         });
-        testMat.needsUpdate = true;
-        this.#rendererToTex.setActiveMaterial(testMat);
-        this.#rendererToTex.render();
-        const gl = this.#rendererToTex.renderer.getContext();
-        const renderTarget = this.#rendererToTex.getRenderTarget();
-        const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
-        gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
-        this.#mainMaterial.normalMap = this.#renderer.createTexture(new TextureData(quadTexData));
-        this.#mainMaterial.normalMap.needsUpdate = true;
-        this.#mainMaterial.needsUpdate = true;
-
-        return quadTexData;
     }
     
     #update(time) {
@@ -328,6 +315,7 @@ export default class SceneCreator {
         }
 
         this.#normalMapTexMaterial.uniforms.strength.value = this.normalMapParams.strength;
+        this.#normalMapStrengthMat.uniforms.strength.value = this.normalMapParams.nStrength;
     }
     
     #updateRenderToTexTargetSizeFromTexture(sourceTex) {
@@ -350,6 +338,7 @@ export default class SceneCreator {
     #mainCamera;
     #mainMaterial;
     #normalMapTexMaterial;
+    #normalMapStrengthMat;
     #mainObject;
     #directionalLight;
     #ambientLight;

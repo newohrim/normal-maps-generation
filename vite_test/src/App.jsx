@@ -42,8 +42,6 @@ function generateButtonClickedHandle(setNormalMapGenerated) {
       const normalTex = new TextureData(normalTexImgData, canvas);
       const threeNormalTex = threeRenderer.createTexture(normalTex);
       sceneCreator.setNormalMapTexture(threeNormalTex);
-      //filteredTex = new THREE.DataTexture(filteredTexData.data, filteredTexData.width, filteredTexData.height, THREE.RGBAFormat);
-      //strengthenedNormalTexData = sceneCreator.strengthenNormals(filteredTex, normalStrength);
       setNormalMapGenerated(true);
    });
 }
@@ -54,14 +52,22 @@ function upload_texture(textureWidth, textureHeight, onLoad)
    loader.load(new TextureLoader(), onLoad);
 }
 
-function onNormalStrengthSliderChanged(value, setNormalMapGenerated) {
+function onNormalStrengthSliderChanged(value) {
    if (isNaN(value)) {
       return;
    }
    normalStrength = value;
    sceneCreator.normalMapParams.strength = normalStrength;
    sceneCreator.normalMapParamsChangedHandle();
-   //sceneCreator.strengthenNormals(filteredTex, normalStrength);
+}
+
+function onGlobalNormalStrengthSliderChanged(value) {
+   if (isNaN(value)) {
+      return;
+   }
+   //normalStrength = value;
+   sceneCreator.normalMapParams.nStrength = value;
+   sceneCreator.normalMapParamsChangedHandle();
 }
 
 function TexturePlaceholder({setImgLoaded, textureWidth, textureHeight}) {
@@ -124,11 +130,16 @@ function App() {
    const [imgLoaded, setImgLoaded] = useState(false);
    const [rendererInitialized, setRendererInitialized] = useState(false);
    const [normalMapGenerated, setNormalMapGenerated] = useState(false);
-   const [normalStrengthSliderValue, setNormalStrength] = useState(1)
+   const [normalStrengthSliderValue, setNormalStrength] = useState(1);
+   const [globNormalStrengthSliderValue, setGlobalNormalStrength] = useState(1);
 
-   const onChange = (newValue) => {
+   const onChange1 = (newValue) => {
       setNormalStrength(newValue);
-      onNormalStrengthSliderChanged(newValue, setNormalMapGenerated);
+      onNormalStrengthSliderChanged(newValue);
+   };
+   const onChange2 = (newValue) => {
+      setGlobalNormalStrength(newValue);
+      onGlobalNormalStrengthSliderChanged(newValue);
    };
 
    setRendererInitializedOuter = setRendererInitialized;
@@ -146,7 +157,8 @@ function App() {
                <TexturePlaceholder setImgLoaded={setImgLoaded} textureWidth={textureWidth} textureHeight={textureHeight} />
                )}
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderToTexture}/>) : (<></>)}
-         <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange}/>
+         <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange1}/>
+         <Slider disabled={false} step={0.01} min={0} max={10} value={globNormalStrengthSliderValue} onChange={onChange2}/>
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderer}/>) : (<></>)}
       </div>
       <div className="card">

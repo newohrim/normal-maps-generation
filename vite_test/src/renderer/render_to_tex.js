@@ -1,4 +1,7 @@
 import Renderer from "./renderer";
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import * as THREE from 'three';
 
 export default class ThreeRenderToTexture extends Renderer {
@@ -10,6 +13,9 @@ export default class ThreeRenderToTexture extends Renderer {
         this.#quadObj = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
         this.#activeScene.add(this.#quadObj);
 
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(new RenderPass(this.#activeScene, this.#activeCamera));
+        
         this.render = function() {
             if (this.#renderRequested) {
                 this.renderToTex();
@@ -40,6 +46,10 @@ export default class ThreeRenderToTexture extends Renderer {
         //return new THREE.CanvasTexture(this.renderer.domElement);
     }
 
+    addShaderPass(shader, textureId) {
+        this.composer.addPass(new ShaderPass(shader, textureId));
+    }
+
     requestRender() { this.#renderRequested = true; }
 
     renderToTex() {
@@ -53,24 +63,18 @@ export default class ThreeRenderToTexture extends Renderer {
         }
         this.#quadObj.material = this.#activeMaterial;
         this.renderer.setRenderTarget(null);
-        this.renderer.render(this.#activeScene, this.#activeCamera);
-        //this.#bufferTex.texture.needsUpdate = true;
-
-        //this.renderer.setRenderTarget(null);
-        //this.testMat.uniforms.tex.value = this.#bufferTex.texture;
-        //this.testMat.needsUpdate = true;
-        //this.#quadObj.material = this.testMat;
         //this.renderer.render(this.#activeScene, this.#activeCamera);
+        this.composer.render();
     }
 
     renderToCanvas = false;
     testMat = null;
+    composer;
 
     #quadObj;
     #activeCamera;
     #activeMaterial;
     #activeScene;
     #bufferTex;
-    #canvasTex;
     #renderRequested = false;
 }
