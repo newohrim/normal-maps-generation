@@ -9,9 +9,13 @@ export default class ThreeRenderToTexture extends Renderer {
         super();
         this.renderer = new THREE.WebGLRenderer();
         this.#activeScene = new THREE.Scene();
-        this.#activeCamera = new THREE.OrthographicCamera();
+        this.#activeCamera = new THREE.OrthographicCamera(-1, 1, -1, 1);
         this.#quadObj = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
         this.#activeScene.add(this.#quadObj);
+
+        // OKAY THIS IS FCKING STUPID
+        // I have to set renderer size before EffectComposer creation
+        this.renderer.setSize(512, 512);
 
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.#activeScene, this.#activeCamera));
@@ -63,8 +67,14 @@ export default class ThreeRenderToTexture extends Renderer {
         }
         this.#quadObj.material = this.#activeMaterial;
         this.renderer.setRenderTarget(null);
-        //this.renderer.render(this.#activeScene, this.#activeCamera);
         this.composer.render();
+
+        //this.renderer.setRenderTarget(this.#bufferTex);
+        //this.renderer.render(this.#activeScene, this.#activeCamera);
+        //this.testMat.uniforms.tex.value = this.#bufferTex.texture;
+        //this.#quadObj.material = this.testMat;
+        //this.renderer.setRenderTarget(null);
+        //this.renderer.render(this.#activeScene, this.#activeCamera);
     }
 
     renderToCanvas = false;

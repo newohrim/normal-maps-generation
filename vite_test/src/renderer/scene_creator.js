@@ -10,7 +10,7 @@ export default class SceneCreator {
         this.#rendererToCanvas = rendererToCanvas;
         this.normalMapParams = {
             strength: 1.0,
-            nStrength: 10
+            nStrength: 1.0
         };
     }
 
@@ -47,20 +47,34 @@ export default class SceneCreator {
             const rtCopy = new THREE.DataTexture(dummyData, rt.image.width, rt.image.height, THREE.RGBAFormat);
             const gl = this.#rendererToTex.renderer.getContext();
             gl.readPixels(0, 0, rt.image.width, rt.image.height, gl.RGBA, gl.UNSIGNED_BYTE, rtCopy.image.data);
+            rtCopy.flipY = true;
             this.#mainMaterial.normalMap = rtCopy; 
             this.#mainMaterial.needsUpdate = true; 
             rtCopy.needsUpdate = true;
             //this.#drawToTexMat.uniforms.tex.value = rt;
             //this.#rendererToCanvas.requestRender();
         };
-        this.#rendererToTex.testMat = this.createDrawToTexMaterial();
+
+        // PASS 1: Render NM to texture
+        this.#drawToTexMat = this.createDrawToTexMaterial();
+        this.#rendererToTex.setActiveMaterial(this.#drawToTexMat);
+
+        // PASS 2: Sobel highlight
+        this.#normalMapTexMaterial = this.createSobelFilterHighlightMat(null, this.normalMapParams);
+        this.#rendererToTex.addShaderPass(this.#normalMapTexMaterial, "normalTex");
+
+        // TODO: REMOVE THIS JUNK
+        //this.#rendererToTex.testMat = this.createDrawToTexMaterial();
+
+        // PASS 3: Global highlight
         this.#normalMapStrengthMat = this.createStrengthenNormalsMaterial(null, this.normalMapParams);
         this.#rendererToTex.addShaderPass(this.#normalMapStrengthMat, "tex");
+        this.#rendererToTex.testMat = this.#normalMapStrengthMat;
+
 
         this.#rendererToCanvas.renderToCanvas = true;
         this.#rendererToCanvas.setViewportSize(512, 512);
         this.#rendererToCanvas.renderer.setSize(512, 512);
-        this.#drawToTexMat = this.createDrawToTexMaterial();
         this.#rendererToCanvas.setActiveMaterial(this.#drawToTexMat);
     }
 
@@ -101,16 +115,19 @@ export default class SceneCreator {
                 void main() {
                     //vec4 tx = texture2D(tex, vUv);
                     //gl_FragColor = vec4(0, vUv.x, vUv.y, 1.0);
-
-                    vec4 col = texture2D(tex, vUv);
+                    
+                    // invert y axis, cause tex input gets inverted for some reason
+                    vec2 uv = vec2(vUv.x, 1.0f - vUv.y);
+                    //vec2 uv = vUv;
+                    vec4 col = texture2D(tex, uv);
                     gl_FragColor = vec4(col.rgb, 1.0);
                 }
             `
         });
     }
 
-    drawNormalTex(tex, params) {
-        const testMat = new THREE.ShaderMaterial({
+    createSobelFilterHighlightMat(tex, params) {
+        return new THREE.ShaderMaterial({
             uniforms: {
                 normalTex: { value: tex },
                 strength: { type: 'f', value: params.strength }
@@ -128,7 +145,7 @@ export default class SceneCreator {
                 uniform sampler2D normalTex;
                 uniform float strength;
 
-                const float offset = 1.0f / 300.0f;
+                const float offset = 1.0f;// / 300.0f;
          
                 const vec2 offsets[9] = vec2[9](
                     vec2(-offset,  offset), // top-left
@@ -160,8 +177,8 @@ export default class SceneCreator {
                     vec3 sampleTex[9];
                     for(int i = 0; i < 9; i++)
                     {
-                        //sampleTex[i] = vec3(texelFetch(normalTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
-                        sampleTex[i] = texture2D(normalTex, vUv + offsets[i]).xyz;
+                        sampleTex[i] = vec3(texelFetch(normalTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
+                        //sampleTex[i] = texture2D(normalTex, vUv + offsets[i]).xyz;
                         float average = (sampleTex[i].r + sampleTex[i].g + sampleTex[i].b) / 3.0;
                         sampleTex[i] = vec3(average, average, average);
                     }
@@ -194,8 +211,12 @@ export default class SceneCreator {
                 }
             `
         });
-        this.#normalMapTexMaterial = testMat;
-        this.#rendererToTex.setActiveMaterial(testMat);
+    }
+
+    drawNormalTex(tex, params) {
+        //this.#normalMapTexMaterial = testMat;
+        //this.#rendererToTex.setActiveMaterial(testMat);
+        this.#drawToTexMat.uniforms.tex.value = tex;
         this.#rendererToTex.requestRender();
     }
 
