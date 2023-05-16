@@ -42,9 +42,14 @@ export default class SceneCreator {
         this.#rendererToTex.renderComplete = () => {
             const rt = this.#rendererToTex.getRenderTarget();
             rt.needsUpdate = true;
-            this.#mainMaterial.normalMap = rt; 
+            const dummyData = new Uint8ClampedArray(rt.image.width * rt.image.height * 4);
+            const rtCopy = new THREE.DataTexture(dummyData, rt.image.width, rt.image.height, THREE.RGBAFormat);
+            const gl = this.#rendererToTex.renderer.getContext();
+            gl.readPixels(0, 0, rt.image.width, rt.image.height, gl.RGBA, gl.UNSIGNED_BYTE, rtCopy.image.data);
+            this.#mainMaterial.normalMap = rtCopy; 
             this.#mainMaterial.needsUpdate = true; 
-            this.#drawToTexMat.uniforms.tex.value = rt;
+            rtCopy.needsUpdate = true;
+            //this.#drawToTexMat.uniforms.tex.value = rt;
             //this.#rendererToCanvas.requestRender();
         };
         this.#rendererToTex.testMat = this.createDrawToTexMaterial();
@@ -162,10 +167,23 @@ export default class SceneCreator {
                     //if (length(col) > 1.0f)
                         //col = vec3(1.0f, 0.0f, 0.0f);
 
-                    float mask = max(col.x, 0.0) + 1.0f;
+                    float mask = clamp(col.x, 0.0, 1.0);
                     vec3 normal = texture2D(normalTex, vUv).xyz; // = sampleTex[4]
                     //normal = normal * 2.0f - 1.0f;
-                    normal.xy *= mask * strength;
+
+                    // 1 APPROACH
+                    //normal.xy *= 1.0f + mask * strength;
+
+                    // 2 APPROACH
+                    float maskedStrength = 1.0f + mask * strength;
+                    normal.xy *= maskedStrength;
+                    normal.z = mix(1.0f, normal.z, clamp(maskedStrength, 0.0f, 1.0f));
+                    //normal.z -= clamp(maskedStrength, 0.0f, 1.0f);
+                    //normal *= texture2D(normalTex, vUv).xyz;
+                    //normal.x = clamp(normal.x, 0.0f, 1.0f);
+                    //normal.y = clamp(normal.y, 0.0f, 1.0f);
+                    //normal.z = clamp(normal.z, 0.0f, 1.0f);
+
                     //normal = normalize(normal);
                     gl_FragColor = vec4(normal, 1.0);
                     //gl_FragColor = vec4(0, vUv.x, vUv.y, 1.0);

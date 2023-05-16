@@ -47,28 +47,19 @@ export default class ThreeRenderToTexture extends Renderer {
             console.error("render to texture material was null. call setActiveMaterial");
             return;
         }
-        //if (this.#bufferTex == null) {
-        //    console.error("render to texture bufferTex was null. call setViewport");
-        //    return;
-        //}
-
-        //this.renderer.setRenderTarget(this.#bufferTex);
-        //this.renderer.render(this.#activeScene, this.#activeCamera);
-        //this.#bufferTex.texture.needsUpdate = true;
-        //this.renderer.setRenderTarget(null);
-        //if (this.renderToCanvas)
-        //    console.log("render to canvas");
+        if (this.#bufferTex == null) {
+            console.error("render to texture bufferTex was null. call setViewport");
+            return;
+        }
         this.#quadObj.material = this.#activeMaterial;
-        this.renderer.setRenderTarget(this.#bufferTex);
-        this.renderer.render(this.#activeScene, this.#activeCamera);
-        this.#bufferTex.texture.needsUpdate = true;
-
         this.renderer.setRenderTarget(null);
-        this.testMat.uniforms.tex.value = this.#bufferTex.texture;
-        this.testMat.needsUpdate = true;
-        this.#quadObj.material = this.testMat;
         this.renderer.render(this.#activeScene, this.#activeCamera);
+        //this.#bufferTex.texture.needsUpdate = true;
+
         //this.renderer.setRenderTarget(null);
+        //this.testMat.uniforms.tex.value = this.#bufferTex.texture;
+        //this.testMat.needsUpdate = true;
+        //this.#quadObj.material = this.testMat;
         //this.renderer.render(this.#activeScene, this.#activeCamera);
     }
 

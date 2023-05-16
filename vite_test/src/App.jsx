@@ -140,13 +140,13 @@ function App() {
       <>
       <h1>Normal map generation test</h1>
       <div className="mainPanel">
-         <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange}/>
          {imgLoaded ? (
             <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={textureImgData.getTextureData()} />
             ) : (
-            <TexturePlaceholder setImgLoaded={setImgLoaded} textureWidth={textureWidth} textureHeight={textureHeight} />
-         )}
+               <TexturePlaceholder setImgLoaded={setImgLoaded} textureWidth={textureWidth} textureHeight={textureHeight} />
+               )}
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderToTexture}/>) : (<></>)}
+         <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange}/>
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderer}/>) : (<></>)}
       </div>
       <div className="card">
