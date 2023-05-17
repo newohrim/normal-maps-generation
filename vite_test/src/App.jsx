@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, createElement } from 'react'
-import { Slider } from 'antd';
+import { Slider, Checkbox } from 'antd';
 //import './tfjs.js';
 //import Tiff from 'tiff.js'
 import * as THREE from 'three'
@@ -65,8 +65,37 @@ function onGlobalNormalStrengthSliderChanged(value) {
    if (isNaN(value)) {
       return;
    }
-   //normalStrength = value;
    sceneCreator.normalMapParams.nStrength = value;
+   sceneCreator.normalMapParamsChangedHandle();
+}
+
+function onBlurStrengthSliderValueChanged(value) {
+   if (isNaN(value)) {
+      return;
+   }
+   sceneCreator.normalMapParams.blurStrength = value;
+   sceneCreator.normalMapParamsChangedHandle();
+}
+
+function onInvertXValueChanged(value) {
+   if (isNaN(value)) {
+      return;
+   }
+   if (value) 
+      sceneCreator.normalMapParams.invertX = 1.0;
+   else
+      sceneCreator.normalMapParams.invertX = 0.0;
+   sceneCreator.normalMapParamsChangedHandle();
+}
+
+function onInvertYValueChanged(value) {
+   if (isNaN(value)) {
+      return;
+   }
+   if (value) 
+      sceneCreator.normalMapParams.invertY = 1.0;
+   else
+      sceneCreator.normalMapParams.invertY = 0.0;
    sceneCreator.normalMapParamsChangedHandle();
 }
 
@@ -132,6 +161,9 @@ function App() {
    const [normalMapGenerated, setNormalMapGenerated] = useState(false);
    const [normalStrengthSliderValue, setNormalStrength] = useState(1);
    const [globNormalStrengthSliderValue, setGlobalNormalStrength] = useState(1);
+   const [blurStrength, setBlurStrength] = useState(1);
+   const [invertX, setInvertX] = useState(false);
+   const [invertY, setInvertY] = useState(false);
 
    const onChange1 = (newValue) => {
       setNormalStrength(newValue);
@@ -140,6 +172,20 @@ function App() {
    const onChange2 = (newValue) => {
       setGlobalNormalStrength(newValue);
       onGlobalNormalStrengthSliderChanged(newValue);
+   };
+   const onChange3 = (newValue) => {
+      setBlurStrength(newValue);
+      onBlurStrengthSliderValueChanged(newValue);
+   };
+   const onChange4 = (e) => {
+      const checked = e.target.checked;
+      setInvertX(checked);
+      onInvertXValueChanged(checked);
+   };
+   const onChange5 = (e) => {
+      const checked = e.target.checked;
+      setInvertY(checked);
+      onInvertYValueChanged(checked);
    };
 
    setRendererInitializedOuter = setRendererInitialized;
@@ -159,6 +205,9 @@ function App() {
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderToTexture}/>) : (<></>)}
          <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange1}/>
          <Slider disabled={false} step={0.01} min={0} max={10} value={globNormalStrengthSliderValue} onChange={onChange2}/>
+         <Slider disabled={false} step={0.01} min={-5} max={5} value={blurStrength} onChange={onChange3}/>
+         <Checkbox disabled={false} checked={invertX} onChange={onChange4}/>
+         <Checkbox disabled={false} checked={invertY} onChange={onChange5}/>
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderer}/>) : (<></>)}
       </div>
       <div className="card">

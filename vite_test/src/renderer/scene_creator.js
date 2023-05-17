@@ -1,6 +1,8 @@
 import Renderer from "./renderer";
 import ThreeRenderToTexture from "./render_to_tex";
 import TextureData from "./data/texdata";
+import { HorizontalBlurShader } from "../shaders/HorizontalBlurShader";
+import { VerticalBlurShader } from "../shaders/VerticalBlurShader";
 import * as THREE from 'three';
 
 export default class SceneCreator {
@@ -10,7 +12,10 @@ export default class SceneCreator {
         this.#rendererToCanvas = rendererToCanvas;
         this.normalMapParams = {
             strength: 1.0,
-            nStrength: 1.0
+            nStrength: 1.0,
+            blurStrength: 1.0,
+            invertX: 0.0,
+            invertY: 0.0
         };
     }
 
@@ -71,6 +76,14 @@ export default class SceneCreator {
         this.#rendererToTex.addShaderPass(this.#normalMapStrengthMat, "tex");
         this.#rendererToTex.testMat = this.#normalMapStrengthMat;
 
+        this.#blurShaderPassMaterialH = new THREE.ShaderMaterial(HorizontalBlurShader);
+        this.#rendererToTex.addShaderPass(this.#blurShaderPassMaterialH, "tDiffuse");
+
+        this.#blurShaderPassMaterialV = new THREE.ShaderMaterial(VerticalBlurShader);
+        this.#rendererToTex.addShaderPass(this.#blurShaderPassMaterialV, "tDiffuse");
+        
+        this.#invertShaderPassMaterial = this.createInvertShaderMaterial(null, this.normalMapParams);
+        this.#rendererToTex.addShaderPass(this.#invertShaderPassMaterial, "tex");
 
         this.#rendererToCanvas.renderToCanvas = true;
         this.#rendererToCanvas.setViewportSize(512, 512);
@@ -324,6 +337,39 @@ export default class SceneCreator {
             `
         });
     }
+
+    createInvertShaderMaterial(tex, params) {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                tex: { value: tex },
+                invertX: { type: 'f', value: params.invertX },
+                invertY: { type: 'f', value: params.invertY }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);    
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform sampler2D tex;
+                uniform float invertX;
+                uniform float invertY;
+                
+                void main() {
+                    vec3 col = texture2D(tex, vUv).xyz;
+                    if (invertX > 0.0)
+                        col.x = 1.0 - col.x;
+                    if (invertY > 0.0)
+                        col.y = 1.0 - col.y;
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        });
+    }
     
     #update(time) {
         this.#mainObject.rotation.x = time / 2000;
@@ -337,6 +383,12 @@ export default class SceneCreator {
 
         this.#normalMapTexMaterial.uniforms.strength.value = this.normalMapParams.strength;
         this.#normalMapStrengthMat.uniforms.strength.value = this.normalMapParams.nStrength;
+        var rendererSize = new THREE.Vector2();
+        this.#rendererToTex.renderer.getSize(rendererSize)
+        this.#blurShaderPassMaterialH.uniforms.h.value = this.normalMapParams.blurStrength / rendererSize.x;
+        this.#blurShaderPassMaterialV.uniforms.v.value = this.normalMapParams.blurStrength / rendererSize.y;
+        this.#invertShaderPassMaterial.uniforms.invertX.value = this.normalMapParams.invertX;
+        this.#invertShaderPassMaterial.uniforms.invertY .value= this.normalMapParams.invertY;
     }
     
     #updateRenderToTexTargetSizeFromTexture(sourceTex) {
@@ -360,6 +412,9 @@ export default class SceneCreator {
     #mainMaterial;
     #normalMapTexMaterial;
     #normalMapStrengthMat;
+    #blurShaderPassMaterialH;
+    #blurShaderPassMaterialV;
+    #invertShaderPassMaterial;
     #mainObject;
     #directionalLight;
     #ambientLight;
