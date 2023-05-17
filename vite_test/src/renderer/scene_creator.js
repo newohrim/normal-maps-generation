@@ -4,6 +4,7 @@ import TextureData from "./data/texdata";
 import { HorizontalBlurShader } from "../shaders/HorizontalBlurShader";
 import { VerticalBlurShader } from "../shaders/VerticalBlurShader";
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export default class SceneCreator {
     constructor(renderer, rendererToTex, rendererToCanvas) {
@@ -36,6 +37,9 @@ export default class SceneCreator {
         this.#renderer.addToActiveScene(this.#directionalLight);
         this.#renderer.addToActiveScene(this.#directionalLight.target);
         this.#mainMaterial = this.#renderer.createDefaultMaterial();
+        //this.#mainMaterial.flatShading = true;
+        this.#mainMaterial.roughness = 0.58;
+        this.#mainMaterial.metalness = 0.62;
         this.#mainObject = this.#renderer.createMesh();
         this.#mainObject.material = this.#mainMaterial;
         this.#renderer.addToActiveScene(this.#mainObject);
@@ -49,7 +53,16 @@ export default class SceneCreator {
             const rt = this.#rendererToTex.getRenderTarget();
             rt.needsUpdate = true;
             const dummyData = new Uint8ClampedArray(rt.image.width * rt.image.height * 4);
-            const rtCopy = new THREE.DataTexture(dummyData, rt.image.width, rt.image.height, THREE.RGBAFormat);
+            const rtCopy = new THREE.DataTexture(dummyData, rt.image.width, rt.image.height, 
+                THREE.RGBAFormat, 
+                THREE.UnsignedByteType, 
+                THREE.UVMapping, 
+                THREE.ClampToEdgeWrapping, 
+                THREE.ClampToEdgeWrapping, 
+                THREE.LinearFilter, 
+                THREE.LinearMipmapLinearFilter);
+            rtCopy.generateMipmaps = true;
+            rtCopy.anisotropy = this.#renderer.renderer.capabilities.getMaxAnisotropy();
             const gl = this.#rendererToTex.renderer.getContext();
             gl.readPixels(0, 0, rt.image.width, rt.image.height, gl.RGBA, gl.UNSIGNED_BYTE, rtCopy.image.data);
             rtCopy.flipY = true;
@@ -59,7 +72,7 @@ export default class SceneCreator {
             //this.#drawToTexMat.uniforms.tex.value = rt;
             //this.#rendererToCanvas.requestRender();
         };
-
+        
         // PASS 1: Render NM to texture
         this.#drawToTexMat = this.createDrawToTexMaterial();
         this.#rendererToTex.setActiveMaterial(this.#drawToTexMat);
@@ -89,6 +102,8 @@ export default class SceneCreator {
         this.#rendererToCanvas.setViewportSize(512, 512);
         this.#rendererToCanvas.renderer.setSize(512, 512);
         this.#rendererToCanvas.setActiveMaterial(this.#drawToTexMat);
+
+        this.#controls = new OrbitControls(this.#mainCamera, this.#renderer.renderer.domElement);
     }
 
     setColorTexture(colorTex) {
@@ -372,8 +387,12 @@ export default class SceneCreator {
     }
     
     #update(time) {
-        this.#mainObject.rotation.x = time / 2000;
-		this.#mainObject.rotation.y = time / 2000;
+        this.#controls.update();
+        
+        if (this.isRotateObj) {
+            this.#mainObject.rotation.x = time / 2000;
+		    this.#mainObject.rotation.y = time / 2000;
+        }
     }
 
     #updateNormalMapParams(time) {
@@ -403,6 +422,7 @@ export default class SceneCreator {
     }
 
     normalMapParams;
+    isRotateObj = true;
 
     #renderer;
     #rendererToTex;
@@ -418,6 +438,7 @@ export default class SceneCreator {
     #mainObject;
     #directionalLight;
     #ambientLight;
+    #controls;
 
     #drawToTexMat;
 }

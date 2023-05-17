@@ -13,6 +13,7 @@ import ThreeRenderer from './renderer/three_renderer'
 import ThreeRenderToTexture from './renderer/render_to_tex'
 import SceneCreator from './renderer/scene_creator'
 import TextureData from './renderer/data/texdata'
+import { triggerFocus } from 'antd/es/input/Input';
 
 const normalMapGenerator = new NormalMapGenerator();
 const threeRenderer = new ThreeRenderer();
@@ -36,11 +37,20 @@ var strengthenedNormalTexData;
 var normalStrength = 1;
 var forceUpdateNormalTexCanvas;
 
+function saveAs(){
+   var a = document.createElement("a");
+   a.href = threeRenderToTexture.renderer.domElement.toDataURL()
+   a.download = "normalMap.png";
+   a.click();
+}
+
 function generateButtonClickedHandle(setNormalMapGenerated) {
    normalMapGenerator.generateNormalMap(textureImgData, canvas => {
       normalTexImgData = canvas.getContext('2d').getImageData(0, 0, 512, 512);
       const normalTex = new TextureData(normalTexImgData, canvas);
       const threeNormalTex = threeRenderer.createTexture(normalTex);
+      threeRenderer.generateMipmaps = true;
+      threeRenderer.anisotropy = threeRenderer.renderer.capabilities.getMaxAnisotropy();
       sceneCreator.setNormalMapTexture(threeNormalTex);
       setNormalMapGenerated(true);
    });
@@ -97,6 +107,13 @@ function onInvertYValueChanged(value) {
    else
       sceneCreator.normalMapParams.invertY = 0.0;
    sceneCreator.normalMapParamsChangedHandle();
+}
+
+function onRotateObjValueChanged(value) {
+   if (isNaN(value)) {
+      return;
+   }
+   sceneCreator.isRotateObj = value;
 }
 
 function TexturePlaceholder({setImgLoaded, textureWidth, textureHeight}) {
@@ -164,6 +181,7 @@ function App() {
    const [blurStrength, setBlurStrength] = useState(1);
    const [invertX, setInvertX] = useState(false);
    const [invertY, setInvertY] = useState(false);
+   const [rotateObj, setRotateObj] = useState(true);
 
    const onChange1 = (newValue) => {
       setNormalStrength(newValue);
@@ -187,6 +205,11 @@ function App() {
       setInvertY(checked);
       onInvertYValueChanged(checked);
    };
+   const onChange6 = (e) => {
+      const checked = e.target.checked;
+      setRotateObj(checked);
+      onRotateObjValueChanged(checked);
+   };
 
    setRendererInitializedOuter = setRendererInitialized;
 
@@ -206,6 +229,7 @@ function App() {
          <Slider disabled={false} step={0.01} min={0} max={10} value={normalStrengthSliderValue} onChange={onChange1}/>
          <Slider disabled={false} step={0.01} min={0} max={10} value={globNormalStrengthSliderValue} onChange={onChange2}/>
          <Slider disabled={false} step={0.01} min={-5} max={5} value={blurStrength} onChange={onChange3}/>
+         <Checkbox disabled={false} checked={rotateObj} onChange={onChange6}/>
          <Checkbox disabled={false} checked={invertX} onChange={onChange4}/>
          <Checkbox disabled={false} checked={invertY} onChange={onChange5}/>
          {rendererInitialized ? (<RendererCanvas rendererObj={threeRenderer}/>) : (<></>)}
@@ -214,6 +238,10 @@ function App() {
          <button onClick={() => generateButtonClickedHandle(setNormalMapGenerated)}>
             Generate
          </button>
+         {normalMapGenerated ?
+         <button onClick={() => saveAs()}>
+            Download
+         </button> : <></>}
       </div>
       </>
   );

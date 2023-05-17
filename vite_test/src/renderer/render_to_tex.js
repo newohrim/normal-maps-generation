@@ -7,7 +7,7 @@ import * as THREE from 'three';
 export default class ThreeRenderToTexture extends Renderer {
     constructor() {
         super();
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({preserveDrawingBuffer: true});
         this.#activeScene = new THREE.Scene();
         this.#activeCamera = new THREE.OrthographicCamera(-1, 1, -1, 1);
         this.#quadObj = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));

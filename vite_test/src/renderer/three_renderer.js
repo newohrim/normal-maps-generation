@@ -35,7 +35,7 @@ export default class ThreeRenderer extends Renderer {
 		    THREE.LinearMipmapLinearFilter);
     }
     createDefaultMaterial() {
-        return new THREE.MeshPhongMaterial();
+        return new THREE.MeshStandardMaterial();
     }
     createScene() {
         return new THREE.Scene();
