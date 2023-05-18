@@ -123,6 +123,26 @@ export default class SceneCreator {
         this.drawNormalTex(normalMapTex, this.normalMapParams);
     }
 
+    setMesh(mesh) {
+        if (!mesh) {
+            return;
+        }
+        if (this.#mainObject) {
+            // TODO: Remove?
+            if (mesh instanceof THREE.Object3D) {
+                mesh.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                       child.material = this.#mainObject.material;
+                    }
+                });
+            }
+            mesh.material = this.#mainObject.material;
+            this.#renderer.removeFromActiveScene(this.#mainObject);
+        }
+        this.#mainObject = mesh;
+        this.#renderer.addToActiveScene(this.#mainObject);
+    }
+
     createDrawToTexMaterial() {
         return new THREE.ShaderMaterial({
             uniforms: {

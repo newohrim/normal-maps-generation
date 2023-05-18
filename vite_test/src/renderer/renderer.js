@@ -4,6 +4,7 @@ export default class Renderer {
     createDefaultMaterial() {}
     createScene() {}
     addToActiveScene(object) {}
+    removeFromActiveScene(object) {}
     createCamera(fov, aspectRatio, near, far) {}
     createDirectionalLight(color, intensity) {}
     createAmbientLight(color, intensity) {}

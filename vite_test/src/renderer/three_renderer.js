@@ -49,6 +49,10 @@ export default class ThreeRenderer extends Renderer {
         this.#activeScene.add(object);
     }
 
+    removeFromActiveScene(object) {
+        this.#activeScene.remove(object);
+    }
+
     createCamera(fov, aspectRatio, near, far) {
         return new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
     }

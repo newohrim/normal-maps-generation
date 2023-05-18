@@ -8,6 +8,7 @@ import './App.css'
 
 import FileLoader from './loaders/file_loader.js'
 import TextureLoader from './loaders/tex_loader.js'
+import MeshLoader from './loaders/mesh_loader';
 import NormalMapGenerator from './model/normal_map_generator'
 import ThreeRenderer from './renderer/three_renderer'
 import ThreeRenderToTexture from './renderer/render_to_tex'
@@ -56,10 +57,22 @@ function generateButtonClickedHandle(setNormalMapGenerated) {
    });
 }
 
+function uploadMeshButtonClickedHandle() {
+   upload_mesh(mesh => {
+      console.log("mesh loaded");
+      sceneCreator.setMesh(mesh);
+   });
+}
+
 function upload_texture(textureWidth, textureHeight, onLoad)
 {
    var loader = new FileLoader();
    loader.load(new TextureLoader(), onLoad);
+}
+
+async function upload_mesh(onLoad) {
+   var loader = new FileLoader();
+   await loader.load(new MeshLoader(), onLoad);
 }
 
 function onNormalStrengthSliderChanged(value) {
@@ -237,6 +250,9 @@ function App() {
       <div className="card">
          <button onClick={() => generateButtonClickedHandle(setNormalMapGenerated)}>
             Generate
+         </button>
+         <button onClick={() => uploadMeshButtonClickedHandle()}>
+            Upload Mesh
          </button>
          {normalMapGenerated ?
          <button onClick={() => saveAs()}>
