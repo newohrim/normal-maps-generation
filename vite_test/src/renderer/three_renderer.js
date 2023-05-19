@@ -29,8 +29,8 @@ export default class ThreeRenderer extends Renderer {
             THREE.RGBAFormat, 
 		    THREE.UnsignedByteType, 
 		    THREE.UVMapping, 
-		    THREE.ClampToEdgeWrapping, 
-		    THREE.ClampToEdgeWrapping, 
+		    THREE.RepeatWrapping, 
+		    THREE.RepeatWrapping, 
 		    THREE.LinearFilter, 
 		    THREE.LinearMipmapLinearFilter);
     }

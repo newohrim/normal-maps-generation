@@ -48,7 +48,7 @@ function saveAs(){
 function generateButtonClickedHandle(setNormalMapGenerated) {
    normalMapGenerator.generateNormalMap(textureImgData, canvas => {
       normalTexImgData = canvas.getContext('2d').getImageData(0, 0, 512, 512);
-      const normalTex = new TextureData(normalTexImgData, canvas);
+      const normalTex = new TextureData(normalTexImgData);
       const threeNormalTex = threeRenderer.createTexture(normalTex);
       threeRenderer.generateMipmaps = true;
       threeRenderer.anisotropy = threeRenderer.renderer.capabilities.getMaxAnisotropy();
@@ -152,6 +152,22 @@ function TexturePlaceholder({setImgLoaded, textureWidth, textureHeight}) {
    );
 }
 
+function convertURIToImageData(URI) {
+   return new Promise(function(resolve, reject) {
+     if (URI == null) return reject();
+     var canvas = document.createElement('canvas'),
+         context = canvas.getContext('2d'),
+         image = new Image();
+     image.addEventListener('load', function() {
+       canvas.width = image.width;
+       canvas.height = image.height;
+       context.drawImage(image, 0, 0, canvas.width, canvas.height);
+       resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+     }, false);
+     image.src = URI;
+   });
+}
+
 function TextureCanvas({textureWidth, textureHeight, contentImageData}) {
    const canvasRef = useRef(null);
    const [, updateState] = useState();
@@ -159,7 +175,9 @@ function TextureCanvas({textureWidth, textureHeight, contentImageData}) {
    useEffect(() => {
       if (contentImageData) {
          var canvas = canvasRef.current;
-         canvas.getContext('2d').putImageData(contentImageData, 0, 0);
+         //canvas.getContext('2d').putImageData(contentImageData, 0, 0);
+         canvas.getContext('2d').drawImage(contentImageData.img, 0, 0, textureWidth, textureHeight);
+         contentImageData.texData = canvas.getContext('2d').getImageData(0, 0, textureWidth, textureHeight);
       }
    }, []);
 
@@ -234,7 +252,7 @@ function App() {
       <h1>Normal map generation test</h1>
       <div className="mainPanel">
          {imgLoaded ? (
-            <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={textureImgData.getTextureData()} />
+            <TextureCanvas textureWidth={textureWidth} textureHeight={textureHeight} contentImageData={textureImgData} />
             ) : (
                <TexturePlaceholder setImgLoaded={setImgLoaded} textureWidth={textureWidth} textureHeight={textureHeight} />
                )}

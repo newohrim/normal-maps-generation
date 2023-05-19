@@ -21,7 +21,7 @@ export default class TextureLoader extends DataLoader {
         }
         const type = parts[parts.length - 1].toLowerCase();
         if (type === "tiff") {
-            this.#tiffLoader.loadData(dataArr);
+            await this.#tiffLoader.loadData(dataArr);
             return this.#tiffLoader;
         }
         if (type !== "png" && type !== "jpg" && type !== "jpeg") {
@@ -29,11 +29,12 @@ export default class TextureLoader extends DataLoader {
             return null;
         }
 
-        const blob = new Blob( [ dataArr ], { type: `image/${type}` } );
-        const urlCreator = window.URL || window.webkitURL;
-        const imageUrl = urlCreator.createObjectURL( blob );
-        const imgData = await convertURIToImageData(imageUrl);
-        const texData = new TextureData(imgData);
+        //const blob = new Blob( [ dataArr ], { type: `image/${type}` } );
+        //const urlCreator = window.URL || window.webkitURL;
+        //const imageUrl = urlCreator.createObjectURL( blob );
+        //const imgData = await convertURIToImageData(imageUrl);
+        const texData = new TextureData();
+        await texData.loadData(dataArr, type);
         return texData;
     }
 

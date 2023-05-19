@@ -25,10 +25,10 @@ export default class SceneCreator {
         this.#renderer.renderer.setClearColor(0xccccff);
         this.#mainScene = this.#renderer.createScene();
         this.#renderer.setActiveScene(this.#mainScene);
-        this.#mainCamera = this.#renderer.createCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
+        this.#mainCamera = this.#renderer.createCamera(70, window.innerWidth / window.innerHeight, 0.01, 2000);
         this.#mainCamera.position.z = 1;
         this.#renderer.setActiveCamera(this.#mainCamera);
-        this.#ambientLight = this.#renderer.createAmbientLight(0x404040, 0.35);
+        this.#ambientLight = this.#renderer.createAmbientLight(0x404040, 0.5);
         this.#renderer.addToActiveScene(this.#ambientLight);
         this.#directionalLight = this.#renderer.createDirectionalLight(0xffffff, 0.5);
         this.#directionalLight.position.set(2, 10, 10);
@@ -108,8 +108,18 @@ export default class SceneCreator {
 
     setColorTexture(colorTex) {
         colorTex.generateMipmaps = true;
-		this.#mainMaterial.map = colorTex;
+		colorTex.wrapS = THREE.RepeatWrapping;
+		colorTex.wrapT = THREE.RepeatWrapping;
+
+        // MUST FLIP VERTICALLY FOR FBX
+        // THE SAME FOR NORMAL MAP
+        colorTex.repeat.y = -1;
+
+        // OPTIONALLY
+        //colorTex.repeat.x = -1;
+
 		colorTex.needsUpdate = true;
+		this.#mainMaterial.map = colorTex;
         this.#mainMaterial.needsUpdate = true;
         
         this.#updateRenderToTexTargetSizeFromTexture(colorTex);
