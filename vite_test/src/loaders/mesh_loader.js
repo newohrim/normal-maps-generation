@@ -36,6 +36,6 @@ export default class MeshLoader extends DataLoader {
                 return;
         }
 
-        return mesh;
+        return { mesh: mesh, type: type };
     }
 }

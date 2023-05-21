@@ -21,11 +21,11 @@ export default class SceneCreator {
     }
 
     init() {
-        this.#renderer.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.#renderer.renderer.setSize(512, 512);
         this.#renderer.renderer.setClearColor(0xccccff);
         this.#mainScene = this.#renderer.createScene();
         this.#renderer.setActiveScene(this.#mainScene);
-        this.#mainCamera = this.#renderer.createCamera(70, window.innerWidth / window.innerHeight, 0.01, 2000);
+        this.#mainCamera = this.#renderer.createCamera(70, 1, 0.01, 2000);
         this.#mainCamera.position.z = 1;
         this.#renderer.setActiveCamera(this.#mainCamera);
         this.#ambientLight = this.#renderer.createAmbientLight(0x404040, 0.5);
@@ -67,10 +67,9 @@ export default class SceneCreator {
             gl.readPixels(0, 0, rt.image.width, rt.image.height, gl.RGBA, gl.UNSIGNED_BYTE, rtCopy.image.data);
             rtCopy.flipY = true;
             this.#mainMaterial.normalMap = rtCopy; 
+            this.#flipTextures();
             this.#mainMaterial.needsUpdate = true; 
             rtCopy.needsUpdate = true;
-            //this.#drawToTexMat.uniforms.tex.value = rt;
-            //this.#rendererToCanvas.requestRender();
         };
         
         // PASS 1: Render NM to texture
@@ -80,9 +79,6 @@ export default class SceneCreator {
         // PASS 2: Sobel highlight
         this.#normalMapTexMaterial = this.createSobelFilterHighlightMat(null, this.normalMapParams);
         this.#rendererToTex.addShaderPass(this.#normalMapTexMaterial, "normalTex");
-
-        // TODO: REMOVE THIS JUNK
-        //this.#rendererToTex.testMat = this.createDrawToTexMaterial();
 
         // PASS 3: Global highlight
         this.#normalMapStrengthMat = this.createStrengthenNormalsMaterial(null, this.normalMapParams);
@@ -108,32 +104,25 @@ export default class SceneCreator {
 
     setColorTexture(colorTex) {
         colorTex.generateMipmaps = true;
-		colorTex.wrapS = THREE.RepeatWrapping;
-		colorTex.wrapT = THREE.RepeatWrapping;
-
-        // MUST FLIP VERTICALLY FOR FBX
-        // THE SAME FOR NORMAL MAP
-        colorTex.repeat.y = -1;
-
-        // OPTIONALLY
-        //colorTex.repeat.x = -1;
-
 		colorTex.needsUpdate = true;
 		this.#mainMaterial.map = colorTex;
         this.#mainMaterial.needsUpdate = true;
         
+        this.#flipTextures();
         this.#updateRenderToTexTargetSizeFromTexture(colorTex);
     }
 
     setNormalMapTexture(normalMapTex) {
 		this.#mainMaterial.normalMap = normalMapTex;
         this.#mainMaterial.normalMap.needsUpdate = true;
+        this.setNormalMapEnabled(this.#isNormalMapEnabled);
         this.#mainMaterial.needsUpdate = true;
 
+        this.#flipTextures();
         this.drawNormalTex(normalMapTex, this.normalMapParams);
     }
 
-    setMesh(mesh) {
+    setMesh(mesh, type) {
         if (!mesh) {
             return;
         }
@@ -151,6 +140,21 @@ export default class SceneCreator {
         }
         this.#mainObject = mesh;
         this.#renderer.addToActiveScene(this.#mainObject);
+        
+        if (type !== "") {
+            this.#meshType = type;
+            this.#flipTextures();
+        }
+    }
+
+    setNormalMapEnabled(isEnabled) {
+        this.#isNormalMapEnabled = isEnabled;
+
+        if (this.#mainMaterial.normalMap) {
+            const strength = isEnabled ? 1.0 : 0.0;
+            this.#mainMaterial.normalScale = new THREE.Vector2(strength, strength);
+            this.#mainMaterial.needsUpdate = true;
+        }
     }
 
     createDrawToTexMaterial() {
@@ -272,86 +276,8 @@ export default class SceneCreator {
     }
 
     drawNormalTex(tex, params) {
-        //this.#normalMapTexMaterial = testMat;
-        //this.#rendererToTex.setActiveMaterial(testMat);
         this.#drawToTexMat.uniforms.tex.value = tex;
         this.#rendererToTex.requestRender();
-    }
-
-    applyFilterToTexture(filter, tex) {
-        const testMat = new THREE.ShaderMaterial({
-            uniforms: {
-                inputTex: {
-                    value: tex
-                }
-            },
-            vertexShader: `
-                varying vec2 vUv;
-
-                void main() {
-                    vUv = uv;
-                    gl_Position = vec4(position, 1.0);    
-                }
-            `,
-            fragmentShader: `
-                varying vec2 vUv;
-                uniform sampler2D inputTex;
-
-                const float offset = 1.0f;
-         
-                const vec2 offsets[9] = vec2[9](
-                    vec2(-offset,  offset), // top-left
-                    vec2( 0.0f,    offset), // top-center
-                    vec2( offset,  offset), // top-right
-                    vec2(-offset,  0.0f),   // center-left
-                    vec2( 0.0f,    0.0f),   // center-center
-                    vec2( offset,  0.0f),   // center-right
-                    vec2(-offset, -offset), // bottom-left
-                    vec2( 0.0f,   -offset), // bottom-center
-                    vec2( offset, -offset)  // bottom-right    
-                );
-                
-                const float kernel_x[9] = float[9](
-                    1.0f, 0.0f, -1.0f,
-                    2.0f, 0.0f, -2.0f,
-                    1.0f, 0.0f, -1.0f
-                );
-                const float kernel_y[9] = float[9](
-                    1.0f, 2.0f, 1.0f,
-                    0.0f, 0.0f, 0.0f,
-                    -1.0f, -2.0f, -1.0f
-                );
-                
-                void main() {
-                    //vec4 tx = texture2D(inputTex, vUv);
-                    //gl_FragColor = vec4(tx.rgb, 1.0);
-                    
-                    vec3 sampleTex[9];
-                    for(int i = 0; i < 9; i++)
-                    {
-                        sampleTex[i] = vec3(texelFetch(inputTex, ivec2(gl_FragCoord.xy + offsets[i]), 0));
-                        float average = (sampleTex[i].r + sampleTex[i].g + sampleTex[i].b) / 3.0;
-                        sampleTex[i] = vec3(average, average, average);
-                    }
-                    vec3 col = vec3(0.0);
-                    for(int i = 0; i < 9; i++)
-                        col += sampleTex[i] * (kernel_x[i] + kernel_y[i]) / 2.0f;
-                    //if (length(col) > 1.0f)
-                        //col = vec3(1.0f, 0.0f, 0.0f);
-                    
-                    gl_FragColor = vec4(col, 1.0);
-                }
-            `
-        });
-        this.#rendererToTex.setActiveMaterial(testMat);
-        this.#rendererToTex.requestRender();
-        //const gl = this.#rendererToTex.renderer.getContext();
-        //const renderTarget = this.#rendererToTex.getRenderTarget();
-        //renderTarget.needsUpdate = true;
-        //const quadTexData = new ImageData(renderTarget.width, renderTarget.height);
-        //gl.readPixels(0, 0, renderTarget.width, renderTarget.height, gl.RGBA, gl.UNSIGNED_BYTE, quadTexData.data);
-
-        //return quadTexData;
     }
 
     createStrengthenNormalsMaterial(tex, params) {
@@ -426,7 +352,7 @@ export default class SceneCreator {
     }
 
     #updateNormalMapParams(time) {
-        if (this.#normalMapTexMaterial == null) {
+        if (this.#mainMaterial.normalMap == null) {
             return;
         }
 
@@ -448,11 +374,46 @@ export default class SceneCreator {
 
     normalMapParamsChangedHandle() { 
         this.#updateNormalMapParams();
-        this.#rendererToTex.requestRender() 
+        if (this.#mainMaterial.normalMap)
+            this.#rendererToTex.requestRender()
+    }
+
+    #flipTextures() {
+        const colorTex = this.#mainMaterial.map;
+        const normalMap = this.#mainMaterial.normalMap;
+        if (this.#meshType === "" || this.#meshType === "glb") {
+            if (colorTex) {
+                this.#flipTex(colorTex, 1);
+            }
+            if (normalMap) {
+                this.#flipTex(normalMap, 1);
+            }
+        }
+        else {
+            if (colorTex) {
+                this.#flipTex(colorTex, -1)
+            }
+            if (normalMap) {
+                this.#flipTex(normalMap, -1);
+            }
+        }
+    }
+
+    #flipTex(tex, flipVal) {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.y = flipVal;
+
+        // OPTIONALLY
+        //tex.repeat.x = flipVal;
+
+        tex.needsUpdate = true;
     }
 
     normalMapParams;
     isRotateObj = true;
+
+    #isNormalMapEnabled = true;
 
     #renderer;
     #rendererToTex;
@@ -471,4 +432,5 @@ export default class SceneCreator {
     #controls;
 
     #drawToTexMat;
+    #meshType = "";
 }
