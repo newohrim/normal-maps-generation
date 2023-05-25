@@ -20,7 +20,7 @@ export default class TextureLoader extends DataLoader {
             return;
         }
         const type = parts[parts.length - 1].toLowerCase();
-        if (type === "tiff") {
+        if (type === "tif" || type === "tiff") {
             await this.#tiffLoader.loadData(dataArr);
             return this.#tiffLoader;
         }

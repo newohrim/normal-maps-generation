@@ -258,9 +258,11 @@ export default class SceneCreator {
                     //normal.xy *= 1.0f + mask * strength;
 
                     // 2 APPROACH
+                    normal = (normal - 0.5f) * 2.0f;
                     float maskedStrength = 1.0f + mask * strength;
                     normal.xy *= maskedStrength;
                     normal.z = mix(1.0f, normal.z, clamp(maskedStrength, 0.0f, 1.0f));
+                    normal = normal * 0.5f + 0.5f;
                     //normal.z -= clamp(maskedStrength, 0.0f, 1.0f);
                     //normal *= texture2D(normalTex, vUv).xyz;
                     //normal.x = clamp(normal.x, 0.0f, 1.0f);
@@ -301,8 +303,10 @@ export default class SceneCreator {
                 
                 void main() {
                     vec3 col = texture2D(tex, vUv).xyz;
+                    col = (col - 0.5f) * 2.0f;
                     col.xy *= strength;
                     col.z = mix(1.0f, col.z, clamp(strength, 0.0f, 1.0f));
+                    col = col * 0.5f + 0.5f;
                     gl_FragColor = vec4(col, 1.0);
                 }
             `
