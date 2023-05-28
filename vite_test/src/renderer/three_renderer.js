@@ -29,13 +29,13 @@ export default class ThreeRenderer extends Renderer {
             THREE.RGBAFormat, 
 		    THREE.UnsignedByteType, 
 		    THREE.UVMapping, 
-		    THREE.ClampToEdgeWrapping, 
-		    THREE.ClampToEdgeWrapping, 
+		    THREE.RepeatWrapping, 
+		    THREE.RepeatWrapping, 
 		    THREE.LinearFilter, 
 		    THREE.LinearMipmapLinearFilter);
     }
     createDefaultMaterial() {
-        return new THREE.MeshPhongMaterial();
+        return new THREE.MeshStandardMaterial();
     }
     createScene() {
         return new THREE.Scene();
@@ -47,6 +47,10 @@ export default class ThreeRenderer extends Renderer {
 
     addToActiveScene(object) {
         this.#activeScene.add(object);
+    }
+
+    removeFromActiveScene(object) {
+        this.#activeScene.remove(object);
     }
 
     createCamera(fov, aspectRatio, near, far) {
