@@ -241,7 +241,7 @@ function App() {
    return (
       <>
          <Content style={headerStyle}>
-            <h1>Normal map generation test</h1>
+            <h1>Normal Map Generator</h1>
          </Content>
          <Content style={contentStyle}>
             <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 32 }} align="middle">
