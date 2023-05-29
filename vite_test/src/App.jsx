@@ -35,7 +35,7 @@ const sceneCreator = new SceneCreator(threeRenderer, threeRenderToTexture, three
 var renderer;
 
 window.onload = function() {
-   normalMapGenerator.loadModel('/model/model.json');
+   normalMapGenerator.loadModel('model/model.json');
    sceneCreator.init();
    setRendererInitializedOuter(true);
 }
