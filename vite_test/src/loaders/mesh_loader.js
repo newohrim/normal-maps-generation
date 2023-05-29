@@ -32,7 +32,7 @@ export default class MeshLoader extends DataLoader {
                 mesh = mesh.scene;
                 break;
             default:
-                console.error(`failed to load mesh. unsupported file type '${type}'`);
+                alert(`failed to load mesh. unsupported file type '${type}'`);
                 return;
         }
 

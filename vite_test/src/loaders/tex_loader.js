@@ -25,7 +25,7 @@ export default class TextureLoader extends DataLoader {
             return this.#tiffLoader;
         }
         if (type !== "png" && type !== "jpg" && type !== "jpeg") {
-            console.error(`failed to load texture. unsupported type ${type}`);
+            alert(`failed to load texture. unsupported type ${type}`);
             return null;
         }
 
